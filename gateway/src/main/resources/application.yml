@@ -1,0 +1,66 @@
+server:
+  port: 8088
+
+---
+
+spring:
+  profiles: default
+  cloud:
+    gateway:
+      routes:
+        - id: texi
+          uri: http://localhost:8081
+          predicates:
+            - Path=/texis/** 
+        - id: passenger
+          uri: http://localhost:8082
+          predicates:
+            - Path=/passengers/** 
+        - id: call
+          uri: http://localhost:8083
+          predicates:
+            - Path=/calls/** 
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+
+
+---
+
+spring:
+  profiles: docker
+  cloud:
+    gateway:
+      routes:
+        - id: texi
+          uri: http://texi:8080
+          predicates:
+            - Path=/texis/** 
+        - id: passenger
+          uri: http://passenger:8080
+          predicates:
+            - Path=/passengers/** 
+        - id: call
+          uri: http://call:8080
+          predicates:
+            - Path=/calls/** 
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+
+server:
+  port: 8080
