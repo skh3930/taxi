@@ -198,13 +198,13 @@ public interface PassengerRepository extends PagingAndSortingRepository<Passenge
 - 
 ```
 # 택시 요청 
-http POST http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/passengers startLocation=서울역 endLocation=강남역 status=call
+http POST http://localhost:8082/passengers startLocation=서울역 endLocation=강남역 status=call
 
 # 콜 승락
-http POST http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept
+http POST http://localhost:8081/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept
 
 # 콜 상태 확인
-http GET http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/passengers
+http GET http://localhost:8082/passengers
 ```
 
 ## 동기식 호출 과 Fallback 처리
@@ -247,10 +247,8 @@ public interface CallService {
 # 콜 (call) 서비스를 잠시 내려놓음 (ctrl+c, replicas 0 으로 설정)
 
 # 콜 승락
-# fail
-http POST http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept
-# fail
-http POST http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept
+http POST http://localhost:8081/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept # fail
+http POST http://localhost:8081/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept # fail
 
 
 # 콜 서비스 재기동
@@ -258,10 +256,8 @@ cd call
 mvn spring-boot:run
 
 # 콜 승락
-# success
-http POST http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept
-# success
-http POST http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept
+http POST http://localhost:8081/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept # success
+http POST http://localhost:8081/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept # success
 
 ```
 
@@ -321,7 +317,7 @@ public class PolicyHandler {
 
 # 택시 요청 
 # success
-http POST http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/passengers startLocation=서울역 endLocation=강남역 status=call
+http POST http://localhost:8082/passengers startLocation=서울역 endLocation=강남역 status=call
 
 #  서비스 기동
 cd delivery
@@ -329,7 +325,7 @@ mvn spring-boot:run
 
 # 콜 목록 확인
 # call이 수신됨을 확인
-http GET http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/calls     
+http GET http://localhost:8083/calls     
 ```
 
 
@@ -339,36 +335,27 @@ http GET http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.ama
 Taxi의 ECR 구성은 아래와 같다.
 ![image](https://user-images.githubusercontent.com/24731820/120596968-63409680-c47f-11eb-9ef6-cd6339cf3230.png)
 
-사용한 CI/CD 도구는 AWS CodeBuild
-![image](https://user-images.githubusercontent.com/20352446/118972243-4d28d580-b9ab-11eb-83aa-5cd39d06a784.png)
-GitHub Webhook이 동작하여 Docker image가 자동 생성 및 ECR 업로드 된다.
-(pipeline build script 는 report 폴더 이하에 buildspec.yaml 에 포함)
-![image](https://user-images.githubusercontent.com/20352446/118972320-6467c300-b9ab-11eb-811a-423bcb9b59e2.png)
-참고로 그룹미션 작업의 편의를 위해 하나의 git repository를 사용하였다
-
 
 ## Kubernetes 설정
 AWS EKS를 활용했으며, 추가한 namespace는 coffee와 kafka로 아래와 같다.
 
 ###EKS Deployment
 
-namespace: coffee
-![image](https://user-images.githubusercontent.com/20352446/118971846-d986c880-b9aa-11eb-8872-5baf9083d99a.png)
+namespace: taxi
+![image](https://user-images.githubusercontent.com/24731820/120605516-18c41780-c489-11eb-9f69-a58e69ccd334.png)
 
 namespace: kafka
-![image](https://user-images.githubusercontent.com/20352446/118973352-8dd51e80-b9ac-11eb-8d5f-ac6aa9fe9e5a.png)
+![image](https://user-images.githubusercontent.com/24731820/120605559-24afd980-c489-11eb-8809-b66135b81918.png)
 
 ###EKS Service
 gateway가 아래와 같이 LoadBalnacer 역할을 수행한다  
 
-    ➜  ~ kubectl get service -o wide -n coffee
-    NAME       TYPE           CLUSTER-IP       EXTERNAL-IP                                                                    PORT(S)          AGE     SELECTOR
-    customer   ClusterIP      10.100.166.116   <none>                                                                         8080/TCP         8h      app=customer
-    delivery   ClusterIP      10.100.138.255   <none>                                                                         8080/TCP         8h      app=delivery
-    gateway    LoadBalancer   10.100.59.190    ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com   8080:31716/TCP   6h11m   app=gateway
-    order      ClusterIP      10.100.123.133   <none>                                                                         8080/TCP         8h      app=order
-    product    ClusterIP      10.100.170.95    <none>                                                                         8080/TCP         5h44m   app=product
-    report     ClusterIP      10.100.127.177   <none>                                                                         8080/TCP         4h41m   app=report
+> kubectl get service -o wide -n taxi
+NAME        TYPE           CLUSTER-IP       EXTERNAL-IP                                                                   PORT(S)          AGE   SELECTOR
+call        ClusterIP      10.100.114.137   <none>                                                                        8080/TCP         23m   app=call
+gateway     LoadBalancer   10.100.43.60     ac62074d7fa99475b822702e04b903b0-595332432.ap-southeast-1.elb.amazonaws.com   8080:31105/TCP   17m   app.kubernetes.io/name=gateway
+passenger   ClusterIP      10.100.16.100    <none>                                                                        8080/TCP         23m   app=passenger
+taxi        ClusterIP      10.100.28.150    <none>                                                                        8080/TCP         23m   app=taxi
 
 
 ## 동기식 호출 / 서킷 브레이킹 / 장애격리
