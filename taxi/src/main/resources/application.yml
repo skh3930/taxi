@@ -1,7 +1,6 @@
 server:
   port: 8080
 ---
-
 spring:
   profiles: default
   jpa:
@@ -24,7 +23,7 @@ spring:
                   serde: org.apache.kafka.common.serialization.Serdes$StringSerde
       bindings:
         event-in:
-          group: passenger
+          group: taxi
           destination: taxi
           contentType: application/json
         event-out:
@@ -34,11 +33,14 @@ spring:
 logging:
   level:
     org.hibernate.type: trace
-    org.springframework.cloud: debug
+    org.springframework.cloud: info
+feign:
+  client:
+    url:
+      callUrl: http://localhost:8083
 server:
-  port: 8082
+  port: 8081
 ---
-
 spring:
   profiles: docker
   cloud:
@@ -56,9 +58,13 @@ spring:
                   serde: org.apache.kafka.common.serialization.Serdes$StringSerde
       bindings:
         event-in:
-          group: passenger
+          group: taxi
           destination: taxi
           contentType: application/json
         event-out:
           destination: taxi
           contentType: application/json
+feign:
+  client:
+    url:
+      callUrl: acf4ee7443c3c44ab9d39cc908a3ff59-610311181.us-east-2.elb.amazonaws.com:8080

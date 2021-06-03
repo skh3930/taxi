@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: call
-          image: username/call:latest
+          image: 090702195051.dkr.ecr.us-east-2.amazonaws.com/call:v1
           ports:
             - containerPort: 8080
           readinessProbe:

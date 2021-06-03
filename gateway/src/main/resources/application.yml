@@ -8,10 +8,10 @@ spring:
   cloud:
     gateway:
       routes:
-        - id: texi
+        - id: taxi
           uri: http://localhost:8081
           predicates:
-            - Path=/texis/** 
+            - Path=/taxis/** 
         - id: passenger
           uri: http://localhost:8082
           predicates:
@@ -39,10 +39,10 @@ spring:
   cloud:
     gateway:
       routes:
-        - id: texi
-          uri: http://texi:8080
+        - id: taxi
+          uri: http://taxi:8080
           predicates:
-            - Path=/texis/** 
+            - Path=/taxis/** 
         - id: passenger
           uri: http://passenger:8080
           predicates:

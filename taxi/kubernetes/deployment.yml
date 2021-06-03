@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: passenger
+  name: taxi
   labels:
-    app: passenger
+    app: taxi
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: passenger
+      app: taxi
   template:
     metadata:
       labels:
-        app: passenger
+        app: taxi
     spec:
       containers:
-        - name: passenger
-          image: 090702195051.dkr.ecr.us-east-2.amazonaws.com/passenger:v1
+        - name: taxi
+          image: 090702195051.dkr.ecr.us-east-2.amazonaws.com/taxi:v1
           ports:
             - containerPort: 8080
           readinessProbe:
