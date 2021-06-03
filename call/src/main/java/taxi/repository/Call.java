@@ -26,6 +26,14 @@ public class Call {
 
     }
 
+    @PostUpdate
+    public void onPostUpdate() {
+        UpdatedCall updatedCall = new UpdatedCall();
+        BeanUtils.copyProperties(this, updatedCall);
+        updatedCall.publishAfterCommit();
+
+    }
+
     public Long getCallId() {
         return callId;
     }
