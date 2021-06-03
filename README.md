@@ -523,21 +523,18 @@ Shortest transaction:	        0.02
 ## ConfigMap 설정
 특정값을 k8s 설정으로 올리고 서비스를 기동 후, kafka 정상 접근 여부 확인한다.
 ```
-    ➜  ~ kubectl describe cm report-config -n coffee
-    Name:         report-config
-    Namespace:    coffee
-    Labels:       <none>
-    Annotations:  <none>
-    
-    Data
-    ====
-    TEXT1:
-    ----
-    my-kafka.kafka.svc.cluster.local:9092
-    TEXT2:
-    ----
-    9092
-    Events:  <none>
+kubectl describe cm taxi -n taxi
+Name:         taxi
+Namespace:    taxi
+Labels:       <none>
+Annotations:  <none>
+
+Data
+====
+taxiKafka:
+----
+my-kafka.kafka.svc.cluster.local:9092
+Events:  <none>
 ```
 관련된 application.yml 파일 설정은 다음과 같다. 
 ```
@@ -547,19 +544,21 @@ Shortest transaction:	        0.02
         stream:
           kafka:
             binder:
-              brokers: ${TEXT1}
+              brokers: ${taxiKafka}
 ```
 EKS 설치된 kafka에 정상 접근된 것을 확인할 수 있다. (해당 configMap TEXT1 값을 잘못된 값으로 넣으면 kafka WARN)
 ```
-    2021-05-20 13:42:11.773 INFO 1 --- [pool-1-thread-1] o.a.kafka.common.utils.AppInfoParser : Kafka commitId : fa14705e51bd2ce5
-    2021-05-20 13:42:11.785 INFO 1 --- [pool-1-thread-1] org.apache.kafka.clients.Metadata : Cluster ID: kJGw05_iTNOfms7RJu0JSw
-    2021-05-20 13:42:14.049 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.AbstractCoordinator : [Consumer clientId=consumer-3, groupId=report] Attempt to heartbeat failed since group is rebalancing
-    2021-05-20 13:42:14.049 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator : [Consumer clientId=consumer-3, groupId=report] Revoking previously assigned partitions []
-    2021-05-20 13:42:14.049 INFO 1 --- [container-0-C-1] o.s.c.s.b.k.KafkaMessageChannelBinder$1 : partitions revoked: []
-    2021-05-20 13:42:14.049 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.AbstractCoordinator : [Consumer clientId=consumer-3, groupId=report] (Re-)joining group
-    2021-05-20 13:42:14.056 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.AbstractCoordinator : [Consumer clientId=consumer-3, groupId=report] Successfully joined group with generation 3
-    2021-05-20 13:42:14.057 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator : [Consumer clientId=consumer-3, groupId=report] Setting newly assigned partitions [coffee-0]
-    2021-05-20 13:42:14.064 INFO 1 --- [container-0-C-1] o.s.c.s.b.k.KafkaMessageChannelBinder$1 : partitions assigned: [coffee-0]
+2021-06-03 05:28:24.510 INFO 1 --- [pool-1-thread-1] o.a.kafka.common.utils.AppInfoParser : Kafka version : 2.0.1
+2021-06-03 05:28:24.510 INFO 1 --- [pool-1-thread-1] o.a.kafka.common.utils.AppInfoParser : Kafka commitId : fa14705e51bd2ce5
+2021-06-03 05:28:24.519 INFO 1 --- [pool-1-thread-1] org.apache.kafka.clients.Metadata : Cluster ID: _gCXCLQSQ0mXXI993jUh0Q
+2021-06-03 05:28:26.780 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.AbstractCoordinator : [Consumer clientId=consumer-3, groupId=taxi] Attempt to heartbeat failed since group is rebalancing
+2021-06-03 05:28:26.780 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator : [Consumer clientId=consumer-3, groupId=taxi] Revoking previously assigned partitions []
+2021-06-03 05:28:26.780 INFO 1 --- [container-0-C-1] o.s.c.s.b.k.KafkaMessageChannelBinder$1 : partitions revoked: []
+2021-06-03 05:28:26.781 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.AbstractCoordinator : [Consumer clientId=consumer-3, groupId=taxi] (Re-)joining group
+2021-06-03 05:28:26.789 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.AbstractCoordinator : [Consumer clientId=consumer-3, groupId=taxi] Successfully joined group with generation 10
+2021-06-03 05:28:26.790 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator : [Consumer clientId=consumer-3, groupId=taxi] Setting newly assigned partitions [taxi-0]
+2021-06-03 05:28:26.801 INFO 1 --- [container-0-C-1] o.s.c.s.b.k.KafkaMessageChannelBinder$1 : partitions assigned: [taxi-0]
+2021-06-03 05:29:11.375 INFO 1 --- [nio-8080-exec-1] o.h.h.i.QueryTranslatorFactoryInitiator : HHH000397: Using ASTQueryTranslatorFactory
 ```
 
 ## Zero-downtime deploy
