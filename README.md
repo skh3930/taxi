@@ -107,7 +107,7 @@
 
 ## 헥사고날 아키텍처 다이어그램 도출
 
-![image](https://user-images.githubusercontent.com/74900977/118951124-c9182300-b995-11eb-8b4d-9107d3dcf501.png)
+![image](https://user-images.githubusercontent.com/24731820/120593547-a1878700-c47a-11eb-937e-6533858f3c3f.png)
 
     - Chris Richardson, MSA Patterns 참고하여 Inbound adaptor와 Outbound adaptor를 구분함
     - 호출관계에서 PubSub 과 Req/Resp 를 구분함
@@ -116,22 +116,16 @@
 
 # 구현:
 
-분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 각 BC별로 대변되는 마이크로 서비스들을 스프링부트로 구현하였다. 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다 (각자의 포트넘버는 8081 ~ 8085 이다)
+분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 각 BC별로 대변되는 마이크로 서비스들을 스프링부트로 구현하였다. 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다 (각자의 포트넘버는 8081 ~ 8083 이다)
 
 ```
-cd customer
+cd taxi
 mvn spring-boot:run
 
-cd order
+cd passenger
 mvn spring-boot:run 
 
-cd product
-mvn spring-boot:run  
-
-cd delivery
-mvn spring-boot:run  
-
-cd report
+cd call
 mvn spring-boot:run  
 ```
 
@@ -139,49 +133,47 @@ mvn spring-boot:run
 
 - 각 서비스내에 도출된 핵심 Aggregate Root 객체를 Entity 로 선언하였다.
 ```
-package coffee;
-
-import javax.persistence.*;
-import org.springframework.beans.BeanUtils;
-
 @Entity
-@Table(name = "Delivery_table")
-public class Delivery {
+@Table(name = "Passenger_table")
+public class Passenger {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private Long id;
-    private Long orderId;
+    private Long passengerId;
+    private String startLocation;
+    private String endLocation;
     private String status;
 
     @PostPersist
     public void onPostPersist() {
-        OrderWaited orderWaited = new OrderWaited();
-        BeanUtils.copyProperties(this, orderWaited);
-        orderWaited.publishAfterCommit();
+        CalledTaxi calledtaxi = new CalledTaxi();
+        BeanUtils.copyProperties(this, calledtaxi);
+        calledtaxi.publishAfterCommit();
+
     }
 
-    @PostUpdate
-    public void onPostUpdate() {
-        StatusUpdated statusUpdated = new StatusUpdated();
-        BeanUtils.copyProperties(this, statusUpdated);
-        statusUpdated.publishAfterCommit();
+    public Long getPassengerId() {
+        return passengerId;
     }
 
-    public Long getId() {
-        return id;
+    public void setPassengerId(Long passengerId) {
+        this.passengerId = passengerId;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public String getStartLocation() {
+        return startLocation;
     }
 
-    public Long getOrderId() {
-        return orderId;
+    public void setStartLocation(String startLocation) {
+        this.startLocation = startLocation;
     }
 
-    public void setOrderId(Long orderId) {
-        this.orderId = orderId;
+    public String getEndLocation() {
+        return endLocation;
+    }
+
+    public void setEndLocation(String endLocation) {
+        this.endLocation = endLocation;
     }
 
     public String getStatus() {
@@ -191,34 +183,29 @@ public class Delivery {
     public void setStatus(String status) {
         this.status = status;
     }
-}
 
+}
 
 ```
 - Entity Pattern 과 Repository Pattern 을 적용하여 JPA 를 통하여 다양한 데이터소스 유형 (RDB or NoSQL) 에 대한 별도의 처리가 없도록 데이터 접근 어댑터를 자동 생성하기 위하여 Spring Data REST 의 RestRepository 를 적용하였다
 ```
-package coffee;
+@RepositoryRestResource(collectionResourceRel = "passengers", path = "passengers")
+public interface PassengerRepository extends PagingAndSortingRepository<Passenger, String> {
 
-import org.springframework.data.repository.PagingAndSortingRepository;
-
-public interface OrderRepository extends PagingAndSortingRepository<Order, Long> {
-    public int countByStatus(String status);
 }
 ```
 - 적용 후 REST API 의 테스트
-```
-# 주문 처리
-http POST http://localhost:8082/orders customerId=100 productId=100
-http POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders customerId=100 productId=100
+- 
+# 택시 요청
+![image](https://user-images.githubusercontent.com/24731820/120594060-5621a880-c47b-11eb-85e1-feb00b4f6f42.png)
 
-# 배달 완료 처리
-http PATCH http://localhost:8084/deliveries/1 status=Completed
-http PATCH http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/deliveries/1 status=Completed
+# 콜 승락
+![image](https://user-images.githubusercontent.com/24731820/120594178-85381a00-c47b-11eb-92cd-6530b2a6a089.png)
 
-# 주문 상태 확인
-http GET http://localhost:8082/orders/1
-http GET http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders/1
-```
+# 콜 상태 확인
+![image](https://user-images.githubusercontent.com/24731820/120594267-aac52380-c47b-11eb-9bf3-4a769b0cc355.png)
+
+
 
 ## 동기식 호출 과 Fallback 처리
 
