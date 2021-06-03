@@ -1,8 +1,6 @@
 server:
   port: 8088
-
 ---
-
 spring:
   profiles: default
   cloud:
@@ -11,18 +9,18 @@ spring:
         - id: taxi
           uri: http://localhost:8081
           predicates:
-            - Path=/taxis/** 
+            - Path=/taxis/**
         - id: passenger
           uri: http://localhost:8082
           predicates:
-            - Path=/passengers/** 
+            - Path=/passengers/**
         - id: call
           uri: http://localhost:8083
           predicates:
-            - Path=/calls/** 
+            - Path=/calls/**
       globalcors:
         corsConfigurations:
-          '[/**]':
+          "[/**]":
             allowedOrigins:
               - "*"
             allowedMethods:
@@ -30,30 +28,28 @@ spring:
             allowedHeaders:
               - "*"
             allowCredentials: true
-
-
+logging.level: debug
 ---
-
 spring:
   profiles: docker
   cloud:
     gateway:
       routes:
         - id: taxi
-          uri: http://taxi:8080
+          uri: http://aaf28b2a102794e32acc6c2a2418fa43-123529799.ap-southeast-1.elb.amazonaws.com:8080
           predicates:
-            - Path=/taxis/** 
+            - Path=/taxis/**
         - id: passenger
-          uri: http://passenger:8080
+          uri: http://aaf28b2a102794e32acc6c2a2418fa43-123529799.ap-southeast-1.elb.amazonaws.com:8080
           predicates:
-            - Path=/passengers/** 
+            - Path=/passengers/**
         - id: call
-          uri: http://call:8080
+          uri: http://aaf28b2a102794e32acc6c2a2418fa43-123529799.ap-southeast-1.elb.amazonaws.com:8080
           predicates:
-            - Path=/calls/** 
+            - Path=/calls/**
       globalcors:
         corsConfigurations:
-          '[/**]':
+          "[/**]":
             allowedOrigins:
               - "*"
             allowedMethods:

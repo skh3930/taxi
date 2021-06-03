@@ -16,9 +16,12 @@ spec:
     spec:
       containers:
         - name: taxi
-          image: 090702195051.dkr.ecr.us-east-2.amazonaws.com/taxi:v1
+          image: 879772956301.dkr.ecr.ap-southeast-1.amazonaws.com/user09-taxi:v5
           ports:
             - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: taxi
           readinessProbe:
             httpGet:
               path: '/actuator/health'

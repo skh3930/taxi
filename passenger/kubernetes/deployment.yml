@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: passenger
-          image: 090702195051.dkr.ecr.us-east-2.amazonaws.com/passenger:v1
+          image: 879772956301.dkr.ecr.ap-southeast-1.amazonaws.com/user09-passenger:v1
           ports:
             - containerPort: 8080
           readinessProbe:

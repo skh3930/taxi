@@ -1,8 +1,7 @@
 package taxi.policy;
 
-import taxi.config.kafka.KafkaProcessor;
+import taxi.config.KafkaProcessor;
 import taxi.event.CreatedCall;
-import taxi.repository.Taxi;
 import taxi.repository.TaxiRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;

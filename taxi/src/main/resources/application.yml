@@ -47,7 +47,7 @@ spring:
     stream:
       kafka:
         binder:
-          brokers: my-kafka.kafka.svc.cluster.local:9092
+          brokers: ${taxiKafka}
         streams:
           binder:
             configuration:
@@ -67,4 +67,4 @@ spring:
 feign:
   client:
     url:
-      callUrl: acf4ee7443c3c44ab9d39cc908a3ff59-610311181.us-east-2.elb.amazonaws.com:8080
+      callUrl: http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080

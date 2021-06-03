@@ -14,6 +14,12 @@ public class Taxi {
     private String endLocation;
     private String status;
 
+    @PostPersist
+    public void onPostPersist() {
+        System.out.println("create!!!");
+
+    }
+
     public Long getTaxiId() {
         return taxiId;
     }

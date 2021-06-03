@@ -1,4 +1,4 @@
-package taxi.config.kafka;
+package taxi.config;
 
 import org.springframework.cloud.stream.annotation.Input;
 import org.springframework.cloud.stream.annotation.Output;
