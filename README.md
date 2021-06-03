@@ -380,7 +380,7 @@ hystrix:
       execution.isolation.thread.timeoutInMilliseconds: 610
 
 ```
-- 상품(product) 임의 부하 처리 - 400 밀리에서 증감 220 밀리 정도 왔다갔다 하게
+- (call) 임의 부하 처리 - 400 밀리에서 증감 220 밀리 정도 왔다갔다 하게
 ```
       @PutMapping("/{id}")
     public boolean updateCall(@PathVariable Long id, @RequestBody Map<String, Object> payload) throws Exception {
@@ -398,43 +398,24 @@ hystrix:
 ```
 
 * 부하테스터 siege 툴을 통한 서킷 브레이커 동작 확인:
-- 동시사용자 100명
+- 동시사용자 15명
 - 60초 동안 실시
 
 ```
-siege -c100 -t60S -r10 --content-type "application/json" 'http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders POST {"customerId":2, "productId":3}'
+siege -c15 -t60S --content-type "application/json" 'http://ac62074d7fa99475b822702e04b903b0-595332432.ap-southeast-1.elb.amazonaws.com:8080/taxis/accept POST {"callId":1, "startLocation": "서울역", "endLocation": "강남역", "status" : "accept" }'
 
-HTTP/1.1 201     6.51 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     0.73 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.03 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.22 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.25 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.20 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.24 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.31 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.29 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.42 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.23 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.30 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201    11.88 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     0.66 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.29 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.41 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.33 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-
-Transactions:		         659 hits
-Availability:		       36.98 %
-Elapsed time:		       58.42 secs
-Data transferred:	        0.98 MB
-Response time:		        8.59 secs
-Transaction rate:	       11.28 trans/sec
-Throughput:		        0.02 MB/sec
-Concurrency:		       96.94
-Successful transactions:         659
-Failed transactions:	        1123
-Longest transaction:	       27.38
-Shortest transaction:	        0.01
-
+Transactions:                    863 hits
+Availability:                  45.59 %
+Elapsed time:                  51.38 secs
+Data transferred:               0.28 MB
+Response time:                  0.89 secs
+Transaction rate:              16.80 trans/sec
+Throughput:                     0.01 MB/sec
+Concurrency:                   14.93
+Successful transactions:         863
+Failed transactions:            1030
+Longest transaction:            0.79
+Shortest transaction:           0.14
 ```
 - 운영시스템은 죽지 않고 지속적으로 CB 에 의하여 적절히 회로가 열림과 닫힘이 벌어지면서 자원을 보호. 
   시스템의 안정적인 운영을 위해 HPA 적용 필요.
@@ -468,7 +449,7 @@ taxi        Deployment/taxi        <unknown>/5%   1         5         1         
 ```
 - 부하를 2분간 유지한다.
 ```
-➜  ~ siege -c30 -t60S -r10 --content-type "application/json" 'http://ac62074d7fa99475b822702e04b903b0-595332432.ap-southeast-1.elb.amazonaws.com:8080/passengers POST { "startLocation": "서울역", "endLocation": "강남역", "status" : "call" }'
+➜  ~ siege -c30 -t60S -r10 --content-type "application/json" 'http://ac62074d7fa99475b822702e04b903b0-595332432.ap-southeast-1.elb.amazonaws.com:8080/taxis/accept POST {"callId":1, "startLocation": "서울역", "endLocation": "강남역", "status" : "accept" }'
 ```
 - 오토스케일이 어떻게 되고 있는지 확인한다.
 ```
