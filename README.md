@@ -444,7 +444,7 @@ Shortest transaction:	        0.01
 
 ### Autoscale HPA
 
-- 택시서비스에 대해 HPA를 설정한다. 설정은 CPU 사용량이 10%를 넘어서면 pod를 10개까지 추가한다.
+- 택시서비스에 대해 HPA를 설정한다. 설정은 CPU 사용량이 5%를 넘어서면 pod를 5개까지 추가한다.
 ```
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
@@ -457,23 +457,23 @@ spec:
     kind: Deployment
     name: order
   minReplicas: 1
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 10
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 5
 
 ➜  ~ kubectl get hpa -n taxi
-NAME        REFERENCE            TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
-call        Deployment/order     <unknown>/10%   1         10        0          3m12s
-gateway     Deployment/gateway   <unknown>/10%   1         10        1          4m59s
-passenger   Deployment/order     <unknown>/10%   1         10        0          2m36s
-taxi        Deployment/order     <unknown>/10%   1         10        0          2m57s
+NAME        REFERENCE              TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+call        Deployment/call        <unknown>/5%   1         5         1          19m
+gateway     Deployment/gateway     <unknown>/5%   1         5         1          21m
+passenger   Deployment/passenger   <unknown>/5%   1         5         1          18m
+taxi        Deployment/taxi        <unknown>/5%   1         5         1          19m
 ```
 - 부하를 2분간 유지한다.
 ```
-➜  ~ siege -c30 -t60S -r10 --content-type "application/json" 'http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders POST {"customerId":2, "productId":1}'
+➜  ~ siege -c30 -t60S -r10 --content-type "application/json" 'http://ac62074d7fa99475b822702e04b903b0-595332432.ap-southeast-1.elb.amazonaws.com:8080/passengers POST { "startLocation": "서울역", "endLocation": "강남역", "status" : "call" }'
 ```
 - 오토스케일이 어떻게 되고 있는지 확인한다.
 ```
-➜  ~ kubectl get deploy -n coffee
+➜  ~ kubectl get deploy -n taxi
 NAME       READY   UP-TO-DATE   AVAILABLE   AGE
 customer   1/1     1            1           8h
 delivery   1/1     1            1           8h
@@ -555,30 +555,46 @@ EKS 설치된 kafka에 정상 접근된 것을 확인할 수 있다. (해당 con
 ## Zero-downtime deploy
 k8s의 무중단 서비스 배포 기능을 점검한다.
 ```
-    ➜  ~ kubectl describe deploy order -n coffee
-    Name:                   order
-    Namespace:              coffee
-    CreationTimestamp:      Thu, 20 May 2021 12:59:14 +0900
-    Labels:                 app=order
-    Annotations:            deployment.kubernetes.io/revision: 8
-    Selector:               app=order
-    Replicas:               4 desired | 4 updated | 4 total | 4 available | 0 unavailable
-    StrategyType:           RollingUpdate
-    MinReadySeconds:        0
-    RollingUpdateStrategy:  50% max unavailable, 50% max surge
-    Pod Template:
-        Labels:       app=order
-        Annotations:  kubectl.kubernetes.io/restartedAt: 2021-05-20T12:06:29Z
-        Containers:
-            order:
-                Image:        740569282574.dkr.ecr.ap-northeast-2.amazonaws.com/order:v1
-                Port:         8080/TCP
-                Host Port:    0/TCP
-                Liveness:     http-get http://:8080/actuator/health delay=120s timeout=2s period=5s #success=1 #failure=5
-                Readiness:    http-get http://:8080/actuator/health delay=10s timeout=2s period=5s #success=1 #failure=10
+    ➜  ~ kubectl describe deploy taxi -n taxi
+Name:                   taxi
+Namespace:              taxi
+CreationTimestamp:      Thu, 03 Jun 2021 15:25:24 +0900
+Labels:                 app=taxi
+Annotations:            deployment.kubernetes.io/revision: 3
+Selector:               app=taxi
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=taxi
+  Containers:
+   taxi:
+    Image:      879772956301.dkr.ecr.ap-southeast-1.amazonaws.com/user09-taxi:v7
+    Port:       8080/TCP
+    Host Port:  0/TCP
+    Liveness:   http-get http://:8080/actuator/health delay=120s timeout=2s period=5s #success=1 #failure=5
+    Readiness:  http-get http://:8080/actuator/health delay=10s timeout=2s period=5s #success=1 #failure=10
+    Environment Variables from:
+      taxi        ConfigMap  Optional: false
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   taxi-567688979f (1/1 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  32m   deployment-controller  Scaled up replica set taxi-567688979f to 1
+  Normal  ScalingReplicaSet  31m   deployment-controller  Scaled down replica set taxi-7c54b9966d to 0
 ```
-기능 점검을 위해 order Deployment의 replicas를 4로 수정했다. 
-그리고 위 Readiness와 RollingUpdateStrategy 설정이 정상 적용되는지 확인한다.
+
+위 Readiness와 RollingUpdateStrategy 설정이 정상 적용되는지 확인한다.
 ```
     ➜  ~ kubectl rollout status deploy/order -n coffee
 
