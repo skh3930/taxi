@@ -444,26 +444,28 @@ Shortest transaction:	        0.01
 
 ### Autoscale HPA
 
-- 주문서비스에 대해 HPA를 설정한다. 설정은 CPU 사용량이 5%를 넘어서면 pod를 5개까지 추가한다.(memory 자원 이슈로 10개 불가)
+- 택시서비스에 대해 HPA를 설정한다. 설정은 CPU 사용량이 10%를 넘어서면 pod를 10개까지 추가한다.
 ```
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
-  name: product
-  namespace: coffee
+  name: taxi
+  namespace: taxi
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: product
+    name: order
   minReplicas: 1
-  maxReplicas: 5
-  targetCPUUtilizationPercentage: 5
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 10
 
-➜  ~ kubectl get hpa -n coffee
-NAME      REFERENCE            TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
-order     Deployment/order     30%/5%          1         5         5          17h
-product   Deployment/product   31%/10%         1         5         5          132m
+➜  ~ kubectl get hpa -n taxi
+NAME        REFERENCE            TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+call        Deployment/order     <unknown>/10%   1         10        0          3m12s
+gateway     Deployment/gateway   <unknown>/10%   1         10        1          4m59s
+passenger   Deployment/order     <unknown>/10%   1         10        0          2m36s
+taxi        Deployment/order     <unknown>/10%   1         10        0          2m57s
 ```
 - 부하를 2분간 유지한다.
 ```
