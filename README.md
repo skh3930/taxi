@@ -1,4 +1,4 @@
-# 1조 프로젝트 : SirenOrder
+# 개인 프로젝트 : Taxi
 
 ![MzA2Mjc1Ng](https://user-images.githubusercontent.com/24731820/120581354-a4c44800-c465-11eb-8bf9-6a753f43556d.jpeg)
 
@@ -60,7 +60,7 @@
 
 ## Event Storming 결과
 * MSAEz 로 모델링한 이벤트스토밍 결과:  
-![image](https://user-images.githubusercontent.com/24731820/120582013-b78b4c80-c466-11eb-8011-af459ad47669.png)
+![image](https://user-images.githubusercontent.com/24731820/120582100-e30e3700-c466-11eb-825f-0748bc1031fc.png)
 
 ### 이벤트 도출
 ![image](https://user-images.githubusercontent.com/74900977/118924080-8ba49d00-b977-11eb-82f2-4db4f4be71fa.png)
