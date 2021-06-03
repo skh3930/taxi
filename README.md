@@ -62,14 +62,10 @@
 * MSAEz 로 모델링한 이벤트스토밍 결과:  
 ![image](https://user-images.githubusercontent.com/24731820/120582100-e30e3700-c466-11eb-825f-0748bc1031fc.png)
 
-### 이벤트 도출
-![image](https://user-images.githubusercontent.com/74900977/118924080-8ba49d00-b977-11eb-82f2-4db4f4be71fa.png)
-
-### 부적격 이벤트 탈락
-![image](https://user-images.githubusercontent.com/74900977/118924474-1ab1b500-b978-11eb-8dd3-9fcd7a003a13.png)
+![image](https://user-images.githubusercontent.com/24731820/120582568-9d9e3980-c467-11eb-8cf7-772a4b2c91d0.png)
 
     - 과정중 도출된 잘못된 도메인 이벤트들을 걸러내는 작업을 수행함
-        - 주문시>메뉴카테고리선택됨, 주문시>메뉴검색됨, 주문후>포인트 조회함, 주문후>주문 상태값 조회됨
+        - 콜상태조회, 택시상태조회, 배차여부조회
           :  UI 의 이벤트이지, 업무적인 의미의 이벤트가 아니라서 제외
 
 ### 바운디드 컨텍스트
