@@ -350,12 +350,14 @@ namespace: kafka
 ###EKS Service
 gateway가 아래와 같이 LoadBalnacer 역할을 수행한다  
 
+```
 ➜  ~  kubectl get service -o wide -n taxi
 NAME        TYPE           CLUSTER-IP       EXTERNAL-IP                                                                   PORT(S)          AGE   SELECTOR
 call        ClusterIP      10.100.114.137   <none>                                                                        8080/TCP         23m   app=call
 gateway     LoadBalancer   10.100.43.60     ac62074d7fa99475b822702e04b903b0-595332432.ap-southeast-1.elb.amazonaws.com   8080:31105/TCP   17m   app.kubernetes.io/name=gateway
 passenger   ClusterIP      10.100.16.100    <none>                                                                        8080/TCP         23m   app=passenger
 taxi        ClusterIP      10.100.28.150    <none>                                                                        8080/TCP         23m   app=taxi
+```
 
 
 ## 동기식 호출 / 서킷 브레이킹 / 장애격리
