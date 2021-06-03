@@ -336,8 +336,8 @@ http GET http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.ama
 # 운영
 
 ## CICD 설정
-SirenOrder의 ECR 구성은 아래와 같다.
-![image](https://user-images.githubusercontent.com/20352446/118971683-ad6b4780-b9aa-11eb-893a-1cd05a95ea11.png)
+Taxi의 ECR 구성은 아래와 같다.
+![image](https://user-images.githubusercontent.com/24731820/120596968-63409680-c47f-11eb-9ef6-cd6339cf3230.png)
 
 사용한 CI/CD 도구는 AWS CodeBuild
 ![image](https://user-images.githubusercontent.com/20352446/118972243-4d28d580-b9ab-11eb-83aa-5cd39d06a784.png)
