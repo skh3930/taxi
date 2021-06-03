@@ -94,12 +94,15 @@
 
 ### 비기능 요구사항에 대한 검증
 
-![image](https://user-images.githubusercontent.com/74900977/118941404-a6cdd780-b98c-11eb-9d26-a17a83a5c9ee.png)
+![image](https://user-images.githubusercontent.com/24731820/120583503-52852600-c469-11eb-892b-465c2d59fac2.png)
 
-    - 마이크로 서비스를 넘나드는 시나리오에 대한 트랜잭션 처리
-    - 판매 가능 상품 :  판매가 가능한 상품만 주문 메뉴에 노출됨 , ACID 트랜잭션, Request-Response 방식 처리
-    - 주문 완료시 상품 접수 및 Delivery:  Order 서비스에서 Delivery 마이크로서비스로 주문요청이 전달되는 과정에 있어서 Delivery 마이크로 서비스가 별도의 배포주기를 가지기 때문에 Eventual Consistency 방식으로 트랜잭션 처리함.
-    - Product, Customer, Report MicroService 트랜잭션:  주문 접수 상태, 상품 준비 상태 등 모든 이벤트에 대해 Kafka를 통한 Async 방식 처리, 데이터 일관성의 시점이 크리티컬하지 않은 모든 경우가 대부분이라 판단, Eventual Consistency 를 기본으로 채택함.
+   1. 트랜잭션 (OK)
+    1. 배차가 가능한 콜만 수락할 수 있다. Sync 호출 
+   1. 장애격리 (OK)
+    3. call 서비스가 중단되더라도 고객은 365일 24시간 call을 부를 수 있어야 한다  Async (event-driven), Eventual Consistency
+    4. 콜이 과도하게 들어와서 call 서비스가 과중되더라도 콜 정보를 call 서비스가 정상화 된 이후에 수신한다 Circuit breaker, fallback
+   1. 성능 (OK)
+    1. 주문 접수 상태가 바뀔때마다 고객에게 알림을 줄 수 있어야 한다  Event driven
 
 
 
