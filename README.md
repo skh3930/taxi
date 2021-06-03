@@ -196,170 +196,140 @@ public interface PassengerRepository extends PagingAndSortingRepository<Passenge
 ```
 - 적용 후 REST API 의 테스트
 - 
-# 택시 요청
-![image](https://user-images.githubusercontent.com/24731820/120594060-5621a880-c47b-11eb-85e1-feb00b4f6f42.png)
+```
+# 택시 요청 
+http POST http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/passengers startLocation=서울역 endLocation=강남역 status=call
 
 # 콜 승락
-![image](https://user-images.githubusercontent.com/24731820/120594178-85381a00-c47b-11eb-92cd-6530b2a6a089.png)
+http POST http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept
 
 # 콜 상태 확인
-![image](https://user-images.githubusercontent.com/24731820/120594267-aac52380-c47b-11eb-9bf3-4a769b0cc355.png)
-
-
+http GET http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/passengers
+```
 
 ## 동기식 호출 과 Fallback 처리
 
-분석단계에서의 조건 중 하나로 주문(order)->고객(customer) 간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출하도록 한다. 
+분석단계에서의 조건 중 하나로 택시(taxi)->콜(call) 간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출하도록 한다. 
 
-- 고객 서비스를 호출하기 위하여 Stub과 (FeignClient) 를 이용하여 Service 대행 인터페이스 (Proxy) 를 구현 
+- 콜 서비스를 호출하기 위하여 Stub과 (FeignClient) 를 이용하여 Service 대행 인터페이스 (Proxy) 를 구현 
 
 ```
-package coffee.external;
+@FeignClient(name = "call", url = "${feign.client.url.callUrl}")
+public interface CallService {
 
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-
-@FeignClient(name = "customer", url = "${feign.client.url.customerUrl}")
-public interface CustomerService {
-
-    @RequestMapping(method = RequestMethod.GET, path = "/customers/checkAndModifyPoint")
-    public boolean checkAndModifyPoint(@RequestParam("customerId") Long customerId,
-            @RequestParam("price") Integer price);
+    @PutMapping("/calls/{id}")
+    public boolean updateCall(@PathVariable Long id, @RequestBody Map<String, Object> payload);
 
 }
 ```
 
-- 주문 받은 즉시 고객 포인트를 차감하도록 구현
+- 배차 요청 받은 즉시 해당 콜을 배차 상태로 변경
 ```
-@RequestMapping(value = "/checkAndModifyPoint", method = RequestMethod.GET)
-  public boolean checkAndModifyPoint(@RequestParam("customerId") Long customerId, @RequestParam("price") Integer price) throws Exception {
-          System.out.println("##### /customer/checkAndModifyPoint  called #####");
+  @PutMapping("/{id}")
+    public boolean updateCall(@PathVariable Long id, @RequestBody Map<String, Object> payload) throws Exception {
+        Call call = callRepository.findById(id).get();
 
-          boolean result = false;
+        if (call.getStatus().equals("call")) {
+            call.setStatus(payload.get("status").toString());
+            callRepository.save(call);
 
-          Optional<Customer> customerOptional = customerRepository.findById(customerId);
-          Customer customer = customerOptional.get();
-          if (customer.getCustomerPoint() >= price) {
-                  result = true;
-                  customer.setCustomerPoint(customer.getCustomerPoint() - price);
-                  customerRepository.save(customer);
-          }
-
-          return result;
-  }
+            return true;
+        } else {
+            return false;
+        }
+    }
 ```
 
-- 동기식 호출에서는 호출 시간에 따른 타임 커플링이 발생하며, 고객 시스템이 장애가 나면 주문도 못받는다는 것을 확인:
+- 동기식 호출에서는 호출 시간에 따른 타임 커플링이 발생하며, 콜 시스템이 장애가 나면 배차 요 못받는다는 것을 확인:
 
 
 ```
-# 고객 (customer) 서비스를 잠시 내려놓음 (ctrl+c, replicas 0 으로 설정)
+# 콜 (call) 서비스를 잠시 내려놓음 (ctrl+c, replicas 0 으로 설정)
 
-#주문처리 
-http POST http://localhost:8082/orders customerId=100 productId=100   #Fail
-http POST http://localhost:8082/orders customerId=101 productId=101   #Fail
+# 콜 승락
+# fail
+http POST http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept
+# fail
+http POST http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept
 
-#고객서비스 재기동
-cd 결제
+
+# 콜 서비스 재기동
+cd call
 mvn spring-boot:run
 
-#주문처리
-http POST http://localhost:8082/orders customerId=100 productId=100   #Success
-http POST http://localhost:8082/orders customerId=101 productId=101   #Success
+# 콜 승락
+# success
+http POST http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept
+# success
+http POST http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept
+
 ```
-
-
 
 ## 비동기식 호출 publish-subscribe
 
-주문이 완료된 후, 배송 시스템에게 이를 알려주는 행위는 동기식이 아닌 비동기식으로 처리한다.
-- 이를 위하여 주문이 접수된 후에 곧바로 주문 접수 되었다는 도메인 이벤트를 카프카로 송출한다(Publish)
+고객이 택시 요청을 한 후, 콜 시스템에게 이를 알려주는 행위는 동기식이 아닌 비동기식으로 처리한다.
+- 이를 위하여 택시 요청 접수된 후에 곧바로 콜이 접수 되었다는 도메인 이벤트를 카프카로 송출한다(Publish)
  
 ```
-package coffee;
-
-import javax.persistence.*;
-import org.springframework.beans.BeanUtils;
-
 @Entity
-@DynamicInsert
-@Table(name = "Order_table")
-public class Order {
+@Table(name = "Passenger_table")
+public class Passenger {
 
- ...
-     @PostPersist
-    public void onPostPersist() throws Exception {
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long passengerId;
+    private String startLocation;
+    private String endLocation;
+    private String status;
 
-        Integer price = OrderApplication.applicationContext.getBean(coffee.external.ProductService.class)
-                .checkProductStatus(this.getProductId());
+    @PostPersist
+    public void onPostPersist() {
+        CalledTaxi calledtaxi = new CalledTaxi();
+        BeanUtils.copyProperties(this, calledtaxi);
+        calledtaxi.publishAfterCommit();
 
-        if (price > 0) {
-            boolean result = OrderApplication.applicationContext.getBean(coffee.external.CustomerService.class)
-                    .checkAndModifyPoint(this.getCustomerId(), price);
-
-            if (result) {
-
-                Ordered ordered = new Ordered();
-                BeanUtils.copyProperties(this, ordered);
-                ordered.publishAfterCommit();
-
-            } else
-                throw new Exception("Customer Point - Exception Raised");
-        } else
-            throw new Exception("Product Sold Out - Exception Raised");
     }
-
 }
 ```
-- 배송 서비스에서는 주문 상태 접수 이벤트에 대해서 이를 수신하여 자신의 정책을 처리하도록 PolicyHandler 를 구현한다:
+- 콜 서비스에서는 택시 접수 이벤트에 대해서 이를 수신하여 자신의 정책을 처리하도록 PolicyHandler 를 구현한다:
 
 ```
-package coffee;
-...
-
 @Service
 public class PolicyHandler {
-
     @Autowired
-    DeliveryRepository deliveryRepository;
+    CallRepository callRepository;
 
     @StreamListener(KafkaProcessor.INPUT)
-    public void wheneverOrdered_WaitOrder(@Payload Ordered ordered) {
+    public void wheneverCalledTaxi_CreateCall(@Payload CalledTaxi calledTaxi) {
 
-        if (ordered.isMe()) {
-            System.out.println("##### listener WaitOrder : " + ordered.toJson());
+        if (!calledTaxi.validate())
+            return;
 
-            Delivery delivery = new Delivery();
-            delivery.setOrderId(ordered.getId());
-            delivery.setStatus("Waited");
+        System.out.println("\n\n##### listener CreateCall : " + calledTaxi.toJson() + "\n\n");
 
-            deliveryRepository.save(delivery);
-
-        }
+        Call call = new Call();
+        BeanUtils.copyProperties(calledTaxi, call);
+        callRepository.save(call);
     }
-
 }
 
 ```
 
 배송 시스템은 주문 시스템과 완전히 분리되어있으며, 이벤트 수신에 따라 처리되기 때문에, 배송시스템이 유지보수로 인해 잠시 내려간 상태라도 주문을 받는데 문제가 없다:
 ```
-# 배송 서비스 (delivery) 를 잠시 내려놓음 (ctrl+c)
+# 배송 서비스 (delivery) 를 잠시 내려놓음 
 
-#주문처리
-http POST http://localhost:8082/orders customerId=100 productId=100   #Success
+# 택시 요청 
+# success
+http POST http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/passengers startLocation=서울역 endLocation=강남역 status=call
 
-#주문상태 확인
-http GET http://localhost:8082/orders/1     # 주문상태 Ordered 확인
-
-#배송 서비스 기동
+#  서비스 기동
 cd delivery
 mvn spring-boot:run
 
-#주문상태 확인
-http GET localhost:8082/orders/1     # 주문 상태 Waited로 변경 확인
+# 콜 목록 확인
+# call이 수신됨을 확인
+http GET http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080/calls     
 ```
 
 
