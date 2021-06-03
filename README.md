@@ -447,47 +447,43 @@ gateway     Deployment/gateway     <unknown>/5%   1         5         1         
 passenger   Deployment/passenger   <unknown>/5%   1         5         1          18m
 taxi        Deployment/taxi        <unknown>/5%   1         5         1          19m
 ```
-- 부하를 2분간 유지한다.
+- 부하를 1분간 유지한다.
 ```
-➜  ~ siege -c30 -t60S -r10 --content-type "application/json" 'http://ac62074d7fa99475b822702e04b903b0-595332432.ap-southeast-1.elb.amazonaws.com:8080/taxis/accept POST {"callId":1, "startLocation": "서울역", "endLocation": "강남역", "status" : "accept" }'
+➜  ~ siege -c15 -t60S --content-type "application/json" 'http://ac62074d7fa99475b822702e04b903b0-595332432.ap-southeast-1.elb.amazonaws.com:8080/taxis/accept POST {"callId":1, "startLocation": "서울역", "endLocation": "강남역", "status" : "accept" }'
 ```
 - 오토스케일이 어떻게 되고 있는지 확인한다.
 ```
 ➜  ~ kubectl get deploy -n taxi
-NAME       READY   UP-TO-DATE   AVAILABLE   AGE
-customer   1/1     1            1           8h
-delivery   1/1     1            1           8h
-gateway    2/2     2            2           6h24m
-order      1/1     1            1           8h
-product    1/1     1            1           8h
-report     1/1     1            1           4h51m
+NAME        READY   UP-TO-DATE   AVAILABLE   AGE
+call        1/5     5            1           15h
+gateway     1/5     5            5           15h
+passenger   1/5     5            1           15h
+taxi        1/5     5            5           15h
 ```
 - 어느정도 시간이 흐르면 스케일 아웃이 동작하는 것을 확인
 ```
-➜  ~ kubectl get deploy -n coffee
-NAME              READY   UP-TO-DATE   AVAILABLE   AGE
-customer          1/1     1            1           23h
-delivery          1/1     1            1           23h
-gateway           2/2     2            2           21h
-order             5/5     5            5           23h
-product           5/5     5            5           23h
-report            1/1     1            1           19h
+➜  ~ kubectl get deploy -n taxi
+NAME        READY   UP-TO-DATE   AVAILABLE   AGE
+call        1/5     5            1           15h
+gateway     5/5     5            5           15h
+passenger   1/5     5            1           15h
+taxi        5/5     5            5           15h
 ```
 
 - Availability 가 높아진 것을 확인 (siege)
 ```
-Transactions:		         995 hits
-Availability:		       82.64 %
-Elapsed time:		       59.85 secs
-Data transferred:	        0.29 MB
-Response time:		        5.11 secs
-Transaction rate:	       16.62 trans/sec
-Throughput:		        0.00 MB/sec
-Concurrency:		       84.94
-Successful transactions:         995
-Failed transactions:	         209
-Longest transaction:	       15.26
-Shortest transaction:	        0.02
+Transactions:                   1163 hits
+Availability:                  89.26 %
+Elapsed time:                  59.34 secs
+Data transferred:               0.12 MB
+Response time:                  0.76 secs
+Transaction rate:              19.60 trans/sec
+Throughput:                     0.00 MB/sec
+Concurrency:                   14.91
+Successful transactions:        1163
+Failed transactions:             140
+Longest transaction:            0.96
+Shortest transaction:           0.16
 ```
 
 
