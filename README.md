@@ -70,15 +70,13 @@
 
 ### 바운디드 컨텍스트
 
-![image](https://user-images.githubusercontent.com/74900977/118925812-4df54380-b97a-11eb-9591-a924fe52e9e0.png)
+![image](https://user-images.githubusercontent.com/24731820/120582800-13a2a080-c468-11eb-9ef4-9181825cc1d7.png)
 
-    - 도메인 서열 분리 
-        - Core Domain:  Customer, Order, Product, Delivery : 없어서는 안될 핵심 서비스이며, 연견 Up-time SLA 수준을 99.999% 목표, 배포주기 : 1주일 1회 미만, Delivery 1개월 1회 미만
-        - Supporting Domain: Report : 경쟁력을 내기위한 서비스이며, SLA 수준은 연간 60% 이상 uptime 목표, 배포주기 : 1주일 1회 이상을 기준 ( 각팀 배포 주기 Policy 적용 )
+    - Core Domain:  Passenger, Call, Taxi : 없어서는 안될 핵심 서비스이며, 연견 Up-time SLA 수준을 99.999% 목표
 
 ### 완성된 1차 모형
 
-![image](https://user-images.githubusercontent.com/74900977/118931820-581b4000-b982-11eb-963a-a47b5f014844.png)
+![image](https://user-images.githubusercontent.com/24731820/120582100-e30e3700-c466-11eb-825f-0748bc1031fc.png)
 
 
 ### 기능적 요구사항을 커버하는지 검증
