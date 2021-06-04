@@ -70,7 +70,7 @@
     1. 트랜잭션 (OK)
       1. 배차가 가능한 콜만 수락할 수 있다. Sync 호출 
     2. 장애격리 (OK)
-      1. call 서비스가 중단되더라도 고객은 365일 24시간 call을 부를 수 있어야 한다  Async (event-driven), Eventual Consistency
+      1.  call 서비스가 중단되더라도 고객 서비스에서는 365일 24시간 택시 요청을 할 수 있어야 한다  Async (event-driven), Eventual Consistency
 
 
 ## 헥사고날 아키텍처 다이어그램 도출
