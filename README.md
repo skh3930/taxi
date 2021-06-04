@@ -107,7 +107,7 @@
 
 ## 헥사고날 아키텍처 다이어그램 도출
 
-![image](https://user-images.githubusercontent.com/74900977/118951124-c9182300-b995-11eb-8b4d-9107d3dcf501.png)
+![image](https://user-images.githubusercontent.com/24731820/120593547-a1878700-c47a-11eb-937e-6533858f3c3f.png)
 
     - Chris Richardson, MSA Patterns 참고하여 Inbound adaptor와 Outbound adaptor를 구분함
     - 호출관계에서 PubSub 과 Req/Resp 를 구분함
@@ -116,22 +116,16 @@
 
 # 구현:
 
-분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 각 BC별로 대변되는 마이크로 서비스들을 스프링부트로 구현하였다. 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다 (각자의 포트넘버는 8081 ~ 8085 이다)
+분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 각 BC별로 대변되는 마이크로 서비스들을 스프링부트로 구현하였다. 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다 (각자의 포트넘버는 8081 ~ 8083 이다)
 
 ```
-cd customer
+cd taxi
 mvn spring-boot:run
 
-cd order
+cd passenger
 mvn spring-boot:run 
 
-cd product
-mvn spring-boot:run  
-
-cd delivery
-mvn spring-boot:run  
-
-cd report
+cd call
 mvn spring-boot:run  
 ```
 
@@ -139,49 +133,47 @@ mvn spring-boot:run
 
 - 각 서비스내에 도출된 핵심 Aggregate Root 객체를 Entity 로 선언하였다.
 ```
-package coffee;
-
-import javax.persistence.*;
-import org.springframework.beans.BeanUtils;
-
 @Entity
-@Table(name = "Delivery_table")
-public class Delivery {
+@Table(name = "Passenger_table")
+public class Passenger {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private Long id;
-    private Long orderId;
+    private Long passengerId;
+    private String startLocation;
+    private String endLocation;
     private String status;
 
     @PostPersist
     public void onPostPersist() {
-        OrderWaited orderWaited = new OrderWaited();
-        BeanUtils.copyProperties(this, orderWaited);
-        orderWaited.publishAfterCommit();
+        CalledTaxi calledtaxi = new CalledTaxi();
+        BeanUtils.copyProperties(this, calledtaxi);
+        calledtaxi.publishAfterCommit();
+
     }
 
-    @PostUpdate
-    public void onPostUpdate() {
-        StatusUpdated statusUpdated = new StatusUpdated();
-        BeanUtils.copyProperties(this, statusUpdated);
-        statusUpdated.publishAfterCommit();
+    public Long getPassengerId() {
+        return passengerId;
     }
 
-    public Long getId() {
-        return id;
+    public void setPassengerId(Long passengerId) {
+        this.passengerId = passengerId;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public String getStartLocation() {
+        return startLocation;
     }
 
-    public Long getOrderId() {
-        return orderId;
+    public void setStartLocation(String startLocation) {
+        this.startLocation = startLocation;
     }
 
-    public void setOrderId(Long orderId) {
-        this.orderId = orderId;
+    public String getEndLocation() {
+        return endLocation;
+    }
+
+    public void setEndLocation(String endLocation) {
+        this.endLocation = endLocation;
     }
 
     public String getStatus() {
@@ -191,203 +183,157 @@ public class Delivery {
     public void setStatus(String status) {
         this.status = status;
     }
-}
 
+}
 
 ```
 - Entity Pattern 과 Repository Pattern 을 적용하여 JPA 를 통하여 다양한 데이터소스 유형 (RDB or NoSQL) 에 대한 별도의 처리가 없도록 데이터 접근 어댑터를 자동 생성하기 위하여 Spring Data REST 의 RestRepository 를 적용하였다
 ```
-package coffee;
+@RepositoryRestResource(collectionResourceRel = "passengers", path = "passengers")
+public interface PassengerRepository extends PagingAndSortingRepository<Passenger, String> {
 
-import org.springframework.data.repository.PagingAndSortingRepository;
-
-public interface OrderRepository extends PagingAndSortingRepository<Order, Long> {
-    public int countByStatus(String status);
 }
 ```
 - 적용 후 REST API 의 테스트
+- 
 ```
-# 주문 처리
-http POST http://localhost:8082/orders customerId=100 productId=100
-http POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders customerId=100 productId=100
+# 택시 요청 
+http POST http://localhost:8082/passengers startLocation=서울역 endLocation=강남역 status=call
 
-# 배달 완료 처리
-http PATCH http://localhost:8084/deliveries/1 status=Completed
-http PATCH http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/deliveries/1 status=Completed
+# 콜 승락
+http POST http://localhost:8081/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept
 
-# 주문 상태 확인
-http GET http://localhost:8082/orders/1
-http GET http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders/1
+# 콜 상태 확인
+http GET http://localhost:8082/passengers
 ```
 
 ## 동기식 호출 과 Fallback 처리
 
-분석단계에서의 조건 중 하나로 주문(order)->고객(customer) 간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출하도록 한다. 
+분석단계에서의 조건 중 하나로 택시(taxi)->콜(call) 간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출하도록 한다. 
 
-- 고객 서비스를 호출하기 위하여 Stub과 (FeignClient) 를 이용하여 Service 대행 인터페이스 (Proxy) 를 구현 
+- 콜 서비스를 호출하기 위하여 Stub과 (FeignClient) 를 이용하여 Service 대행 인터페이스 (Proxy) 를 구현 
 
 ```
-package coffee.external;
+@FeignClient(name = "call", url = "${feign.client.url.callUrl}")
+public interface CallService {
 
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-
-@FeignClient(name = "customer", url = "${feign.client.url.customerUrl}")
-public interface CustomerService {
-
-    @RequestMapping(method = RequestMethod.GET, path = "/customers/checkAndModifyPoint")
-    public boolean checkAndModifyPoint(@RequestParam("customerId") Long customerId,
-            @RequestParam("price") Integer price);
+    @PutMapping("/calls/{id}")
+    public boolean updateCall(@PathVariable Long id, @RequestBody Map<String, Object> payload);
 
 }
 ```
 
-- 주문 받은 즉시 고객 포인트를 차감하도록 구현
+- 배차 요청 받은 즉시 해당 콜을 배차 상태로 변경
 ```
-@RequestMapping(value = "/checkAndModifyPoint", method = RequestMethod.GET)
-  public boolean checkAndModifyPoint(@RequestParam("customerId") Long customerId, @RequestParam("price") Integer price) throws Exception {
-          System.out.println("##### /customer/checkAndModifyPoint  called #####");
+  @PutMapping("/{id}")
+    public boolean updateCall(@PathVariable Long id, @RequestBody Map<String, Object> payload) throws Exception {
+        Call call = callRepository.findById(id).get();
 
-          boolean result = false;
+        if (call.getStatus().equals("call")) {
+            call.setStatus(payload.get("status").toString());
+            callRepository.save(call);
 
-          Optional<Customer> customerOptional = customerRepository.findById(customerId);
-          Customer customer = customerOptional.get();
-          if (customer.getCustomerPoint() >= price) {
-                  result = true;
-                  customer.setCustomerPoint(customer.getCustomerPoint() - price);
-                  customerRepository.save(customer);
-          }
-
-          return result;
-  }
+            return true;
+        } else {
+            return false;
+        }
+    }
 ```
 
-- 동기식 호출에서는 호출 시간에 따른 타임 커플링이 발생하며, 고객 시스템이 장애가 나면 주문도 못받는다는 것을 확인:
+- 동기식 호출에서는 호출 시간에 따른 타임 커플링이 발생하며, 콜 시스템이 장애가 나면 배차 요 못받는다는 것을 확인:
 
 
 ```
-# 고객 (customer) 서비스를 잠시 내려놓음 (ctrl+c, replicas 0 으로 설정)
+# 콜 (call) 서비스를 잠시 내려놓음 (ctrl+c, replicas 0 으로 설정)
 
-#주문처리 
-http POST http://localhost:8082/orders customerId=100 productId=100   #Fail
-http POST http://localhost:8082/orders customerId=101 productId=101   #Fail
+# 콜 승락
+http POST http://localhost:8081/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept # fail
+http POST http://localhost:8081/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept # fail
 
-#고객서비스 재기동
-cd 결제
+
+# 콜 서비스 재기동
+cd call
 mvn spring-boot:run
 
-#주문처리
-http POST http://localhost:8082/orders customerId=100 productId=100   #Success
-http POST http://localhost:8082/orders customerId=101 productId=101   #Success
+# 콜 승락
+http POST http://localhost:8081/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept # success
+http POST http://localhost:8081/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept # success
+
 ```
-
-
 
 ## 비동기식 호출 publish-subscribe
 
-주문이 완료된 후, 배송 시스템에게 이를 알려주는 행위는 동기식이 아닌 비동기식으로 처리한다.
-- 이를 위하여 주문이 접수된 후에 곧바로 주문 접수 되었다는 도메인 이벤트를 카프카로 송출한다(Publish)
+고객이 택시 요청을 한 후, 콜 시스템에게 이를 알려주는 행위는 동기식이 아닌 비동기식으로 처리한다.
+- 이를 위하여 택시 요청 접수된 후에 곧바로 콜이 접수 되었다는 도메인 이벤트를 카프카로 송출한다(Publish)
  
 ```
-package coffee;
-
-import javax.persistence.*;
-import org.springframework.beans.BeanUtils;
-
 @Entity
-@DynamicInsert
-@Table(name = "Order_table")
-public class Order {
+@Table(name = "Passenger_table")
+public class Passenger {
 
- ...
-     @PostPersist
-    public void onPostPersist() throws Exception {
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long passengerId;
+    private String startLocation;
+    private String endLocation;
+    private String status;
 
-        Integer price = OrderApplication.applicationContext.getBean(coffee.external.ProductService.class)
-                .checkProductStatus(this.getProductId());
+    @PostPersist
+    public void onPostPersist() {
+        CalledTaxi calledtaxi = new CalledTaxi();
+        BeanUtils.copyProperties(this, calledtaxi);
+        calledtaxi.publishAfterCommit();
 
-        if (price > 0) {
-            boolean result = OrderApplication.applicationContext.getBean(coffee.external.CustomerService.class)
-                    .checkAndModifyPoint(this.getCustomerId(), price);
-
-            if (result) {
-
-                Ordered ordered = new Ordered();
-                BeanUtils.copyProperties(this, ordered);
-                ordered.publishAfterCommit();
-
-            } else
-                throw new Exception("Customer Point - Exception Raised");
-        } else
-            throw new Exception("Product Sold Out - Exception Raised");
     }
-
 }
 ```
-- 배송 서비스에서는 주문 상태 접수 이벤트에 대해서 이를 수신하여 자신의 정책을 처리하도록 PolicyHandler 를 구현한다:
+- 콜 서비스에서는 택시 접수 이벤트에 대해서 이를 수신하여 자신의 정책을 처리하도록 PolicyHandler 를 구현한다:
 
 ```
-package coffee;
-...
-
 @Service
 public class PolicyHandler {
-
     @Autowired
-    DeliveryRepository deliveryRepository;
+    CallRepository callRepository;
 
     @StreamListener(KafkaProcessor.INPUT)
-    public void wheneverOrdered_WaitOrder(@Payload Ordered ordered) {
+    public void wheneverCalledTaxi_CreateCall(@Payload CalledTaxi calledTaxi) {
 
-        if (ordered.isMe()) {
-            System.out.println("##### listener WaitOrder : " + ordered.toJson());
+        if (!calledTaxi.validate())
+            return;
 
-            Delivery delivery = new Delivery();
-            delivery.setOrderId(ordered.getId());
-            delivery.setStatus("Waited");
+        System.out.println("\n\n##### listener CreateCall : " + calledTaxi.toJson() + "\n\n");
 
-            deliveryRepository.save(delivery);
-
-        }
+        Call call = new Call();
+        BeanUtils.copyProperties(calledTaxi, call);
+        callRepository.save(call);
     }
-
 }
 
 ```
 
 배송 시스템은 주문 시스템과 완전히 분리되어있으며, 이벤트 수신에 따라 처리되기 때문에, 배송시스템이 유지보수로 인해 잠시 내려간 상태라도 주문을 받는데 문제가 없다:
 ```
-# 배송 서비스 (delivery) 를 잠시 내려놓음 (ctrl+c)
+# 배송 서비스 (delivery) 를 잠시 내려놓음 
 
-#주문처리
-http POST http://localhost:8082/orders customerId=100 productId=100   #Success
+# 택시 요청 
+# success
+http POST http://localhost:8082/passengers startLocation=서울역 endLocation=강남역 status=call
 
-#주문상태 확인
-http GET http://localhost:8082/orders/1     # 주문상태 Ordered 확인
-
-#배송 서비스 기동
+#  서비스 기동
 cd delivery
 mvn spring-boot:run
 
-#주문상태 확인
-http GET localhost:8082/orders/1     # 주문 상태 Waited로 변경 확인
+# 콜 목록 확인
+# call이 수신됨을 확인
+http GET http://localhost:8083/calls     
 ```
 
 
 # 운영
 
 ## CICD 설정
-SirenOrder의 ECR 구성은 아래와 같다.
-![image](https://user-images.githubusercontent.com/20352446/118971683-ad6b4780-b9aa-11eb-893a-1cd05a95ea11.png)
-
-사용한 CI/CD 도구는 AWS CodeBuild
-![image](https://user-images.githubusercontent.com/20352446/118972243-4d28d580-b9ab-11eb-83aa-5cd39d06a784.png)
-GitHub Webhook이 동작하여 Docker image가 자동 생성 및 ECR 업로드 된다.
-(pipeline build script 는 report 폴더 이하에 buildspec.yaml 에 포함)
-![image](https://user-images.githubusercontent.com/20352446/118972320-6467c300-b9ab-11eb-811a-423bcb9b59e2.png)
-참고로 그룹미션 작업의 편의를 위해 하나의 git repository를 사용하였다
+Taxi의 ECR 구성은 아래와 같다.
+![image](https://user-images.githubusercontent.com/24731820/120596968-63409680-c47f-11eb-9ef6-cd6339cf3230.png)
 
 
 ## Kubernetes 설정
@@ -395,30 +341,30 @@ AWS EKS를 활용했으며, 추가한 namespace는 coffee와 kafka로 아래와 
 
 ###EKS Deployment
 
-namespace: coffee
-![image](https://user-images.githubusercontent.com/20352446/118971846-d986c880-b9aa-11eb-8872-5baf9083d99a.png)
+namespace: taxi
+![image](https://user-images.githubusercontent.com/24731820/120605516-18c41780-c489-11eb-9f69-a58e69ccd334.png)
 
 namespace: kafka
-![image](https://user-images.githubusercontent.com/20352446/118973352-8dd51e80-b9ac-11eb-8d5f-ac6aa9fe9e5a.png)
+![image](https://user-images.githubusercontent.com/24731820/120605559-24afd980-c489-11eb-8809-b66135b81918.png)
 
 ###EKS Service
 gateway가 아래와 같이 LoadBalnacer 역할을 수행한다  
 
-    ➜  ~ kubectl get service -o wide -n coffee
-    NAME       TYPE           CLUSTER-IP       EXTERNAL-IP                                                                    PORT(S)          AGE     SELECTOR
-    customer   ClusterIP      10.100.166.116   <none>                                                                         8080/TCP         8h      app=customer
-    delivery   ClusterIP      10.100.138.255   <none>                                                                         8080/TCP         8h      app=delivery
-    gateway    LoadBalancer   10.100.59.190    ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com   8080:31716/TCP   6h11m   app=gateway
-    order      ClusterIP      10.100.123.133   <none>                                                                         8080/TCP         8h      app=order
-    product    ClusterIP      10.100.170.95    <none>                                                                         8080/TCP         5h44m   app=product
-    report     ClusterIP      10.100.127.177   <none>                                                                         8080/TCP         4h41m   app=report
+```
+➜  ~  kubectl get service -o wide -n taxi
+NAME        TYPE           CLUSTER-IP       EXTERNAL-IP                                                                   PORT(S)          AGE   SELECTOR
+call        ClusterIP      10.100.114.137   <none>                                                                        8080/TCP         23m   app=call
+gateway     LoadBalancer   10.100.43.60     ac62074d7fa99475b822702e04b903b0-595332432.ap-southeast-1.elb.amazonaws.com   8080:31105/TCP   17m   app.kubernetes.io/name=gateway
+passenger   ClusterIP      10.100.16.100    <none>                                                                        8080/TCP         23m   app=passenger
+taxi        ClusterIP      10.100.28.150    <none>                                                                        8080/TCP         23m   app=taxi
+```
 
 
 ## 동기식 호출 / 서킷 브레이킹 / 장애격리
 
 * 서킷 브레이킹 프레임워크의 선택: Spring FeignClient + Hystrix 옵션을 사용하여 구현함
 
-시나리오는 주문(order)-->상품(product) 연결을 RestFul Request/Response 로 연동하여 구현이 되어있고, 주문이 과도할 경우 CB 를 통하여 장애격리.
+시나리오는 택시(taxi)-->콜(call) 연결을 RestFul Request/Response 로 연동하여 구현이 되어있고, 배차 요청이 과도할 경우 CB 를 통하여 장애격리.
 
 - Hystrix 를 설정:  요청처리 쓰레드에서 처리시간이 610 밀리가 넘어서기 시작하여 어느정도 유지되면 CB 회로가 닫히도록 (요청을 빠르게 실패처리, 차단) 설정
 ```
@@ -434,62 +380,42 @@ hystrix:
       execution.isolation.thread.timeoutInMilliseconds: 610
 
 ```
-- 상품(product) 임의 부하 처리 - 400 밀리에서 증감 220 밀리 정도 왔다갔다 하게
+- (call) 임의 부하 처리 - 400 밀리에서 증감 220 밀리 정도 왔다갔다 하게
 ```
-        @RequestMapping(value = "/products/checkProductStatus", method = RequestMethod.GET, produces = "application/json;charset=UTF-8")
-        public Integer checkProductStatus(@RequestParam("productId") Long productId) throws Exception {
-                
-                //FIXME 생략
-                
-                //임의의 부하를 위한 강제 설정
-                try {
-                        Thread.currentThread().sleep((long) (400 + Math.random() * 220));
-                } catch (InterruptedException e) {
-                        e.printStackTrace();
-                }
-
-                return price;
+      @PutMapping("/{id}")
+    public boolean updateCall(@PathVariable Long id, @RequestBody Map<String, Object> payload) throws Exception {
+        
+        try {
+               Thread.currentThread().sleep((long) (400 + Math.random() * 220));
+        } catch (InterruptedException e) {
+               e.printStackTrace();
         }
+
+        return true;
+        
+     } 
+                
 ```
 
 * 부하테스터 siege 툴을 통한 서킷 브레이커 동작 확인:
-- 동시사용자 100명
+- 동시사용자 15명
 - 60초 동안 실시
 
 ```
-siege -c100 -t60S -r10 --content-type "application/json" 'http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders POST {"customerId":2, "productId":3}'
+siege -c15 -t60S --content-type "application/json" 'http://ac62074d7fa99475b822702e04b903b0-595332432.ap-southeast-1.elb.amazonaws.com:8080/taxis/accept POST {"callId":1, "startLocation": "서울역", "endLocation": "강남역", "status" : "accept" }'
 
-HTTP/1.1 201     6.51 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     0.73 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.03 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.22 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.25 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.20 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.24 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.31 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.29 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.42 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.23 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.30 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201    11.88 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     0.66 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.29 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.41 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-HTTP/1.1 201     6.33 secs:     239 bytes ==> POST http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders
-
-Transactions:		         659 hits
-Availability:		       36.98 %
-Elapsed time:		       58.42 secs
-Data transferred:	        0.98 MB
-Response time:		        8.59 secs
-Transaction rate:	       11.28 trans/sec
-Throughput:		        0.02 MB/sec
-Concurrency:		       96.94
-Successful transactions:         659
-Failed transactions:	        1123
-Longest transaction:	       27.38
-Shortest transaction:	        0.01
-
+Transactions:                    863 hits
+Availability:                  45.59 %
+Elapsed time:                  51.38 secs
+Data transferred:               0.28 MB
+Response time:                  0.89 secs
+Transaction rate:              16.80 trans/sec
+Throughput:                     0.01 MB/sec
+Concurrency:                   14.93
+Successful transactions:         863
+Failed transactions:            1030
+Longest transaction:            0.79
+Shortest transaction:           0.14
 ```
 - 운영시스템은 죽지 않고 지속적으로 CB 에 의하여 적절히 회로가 열림과 닫힘이 벌어지면서 자원을 보호. 
   시스템의 안정적인 운영을 위해 HPA 적용 필요.
@@ -498,89 +424,84 @@ Shortest transaction:	        0.01
 
 ### Autoscale HPA
 
-- 주문서비스에 대해 HPA를 설정한다. 설정은 CPU 사용량이 5%를 넘어서면 pod를 5개까지 추가한다.(memory 자원 이슈로 10개 불가)
+- 택시서비스에 대해 HPA를 설정한다. 설정은 CPU 사용량이 5%를 넘어서면 pod를 5개까지 추가한다.
 ```
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
-  name: product
-  namespace: coffee
+  name: taxi
+  namespace: taxi
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: product
+    name: order
   minReplicas: 1
   maxReplicas: 5
   targetCPUUtilizationPercentage: 5
 
-➜  ~ kubectl get hpa -n coffee
-NAME      REFERENCE            TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
-order     Deployment/order     30%/5%          1         5         5          17h
-product   Deployment/product   31%/10%         1         5         5          132m
+➜  ~ kubectl get hpa -n taxi
+NAME        REFERENCE              TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+call        Deployment/call        <unknown>/5%   1         5         1          19m
+gateway     Deployment/gateway     <unknown>/5%   1         5         1          21m
+passenger   Deployment/passenger   <unknown>/5%   1         5         1          18m
+taxi        Deployment/taxi        <unknown>/5%   1         5         1          19m
 ```
-- 부하를 2분간 유지한다.
+- 부하를 1분간 유지한다.
 ```
-➜  ~ siege -c30 -t60S -r10 --content-type "application/json" 'http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders POST {"customerId":2, "productId":1}'
+➜  ~ siege -c15 -t60S --content-type "application/json" 'http://ac62074d7fa99475b822702e04b903b0-595332432.ap-southeast-1.elb.amazonaws.com:8080/taxis/accept POST {"callId":1, "startLocation": "서울역", "endLocation": "강남역", "status" : "accept" }'
 ```
 - 오토스케일이 어떻게 되고 있는지 확인한다.
 ```
-➜  ~ kubectl get deploy -n coffee
-NAME       READY   UP-TO-DATE   AVAILABLE   AGE
-customer   1/1     1            1           8h
-delivery   1/1     1            1           8h
-gateway    2/2     2            2           6h24m
-order      1/1     1            1           8h
-product    1/1     1            1           8h
-report     1/1     1            1           4h51m
+➜  ~ kubectl get deploy -n taxi
+NAME        READY   UP-TO-DATE   AVAILABLE   AGE
+call        1/5     5            1           15h
+gateway     1/5     5            5           15h
+passenger   1/5     5            1           15h
+taxi        1/5     5            5           15h
 ```
 - 어느정도 시간이 흐르면 스케일 아웃이 동작하는 것을 확인
 ```
-➜  ~ kubectl get deploy -n coffee
-NAME              READY   UP-TO-DATE   AVAILABLE   AGE
-customer          1/1     1            1           23h
-delivery          1/1     1            1           23h
-gateway           2/2     2            2           21h
-order             5/5     5            5           23h
-product           5/5     5            5           23h
-report            1/1     1            1           19h
+➜  ~ kubectl get deploy -n taxi
+NAME        READY   UP-TO-DATE   AVAILABLE   AGE
+call        1/5     5            1           15h
+gateway     5/5     5            5           15h
+passenger   1/5     5            1           15h
+taxi        5/5     5            5           15h
 ```
 
 - Availability 가 높아진 것을 확인 (siege)
 ```
-Transactions:		         995 hits
-Availability:		       82.64 %
-Elapsed time:		       59.85 secs
-Data transferred:	        0.29 MB
-Response time:		        5.11 secs
-Transaction rate:	       16.62 trans/sec
-Throughput:		        0.00 MB/sec
-Concurrency:		       84.94
-Successful transactions:         995
-Failed transactions:	         209
-Longest transaction:	       15.26
-Shortest transaction:	        0.02
+Transactions:                   1163 hits
+Availability:                  89.26 %
+Elapsed time:                  59.34 secs
+Data transferred:               0.12 MB
+Response time:                  0.76 secs
+Transaction rate:              19.60 trans/sec
+Throughput:                     0.00 MB/sec
+Concurrency:                   14.91
+Successful transactions:        1163
+Failed transactions:             140
+Longest transaction:            0.96
+Shortest transaction:           0.16
 ```
 
 
 ## ConfigMap 설정
 특정값을 k8s 설정으로 올리고 서비스를 기동 후, kafka 정상 접근 여부 확인한다.
 ```
-    ➜  ~ kubectl describe cm report-config -n coffee
-    Name:         report-config
-    Namespace:    coffee
-    Labels:       <none>
-    Annotations:  <none>
-    
-    Data
-    ====
-    TEXT1:
-    ----
-    my-kafka.kafka.svc.cluster.local:9092
-    TEXT2:
-    ----
-    9092
-    Events:  <none>
+kubectl describe cm taxi -n taxi
+Name:         taxi
+Namespace:    taxi
+Labels:       <none>
+Annotations:  <none>
+
+Data
+====
+taxiKafka:
+----
+my-kafka.kafka.svc.cluster.local:9092
+Events:  <none>
 ```
 관련된 application.yml 파일 설정은 다음과 같다. 
 ```
@@ -590,48 +511,66 @@ Shortest transaction:	        0.02
         stream:
           kafka:
             binder:
-              brokers: ${TEXT1}
+              brokers: ${taxiKafka}
 ```
 EKS 설치된 kafka에 정상 접근된 것을 확인할 수 있다. (해당 configMap TEXT1 값을 잘못된 값으로 넣으면 kafka WARN)
 ```
-    2021-05-20 13:42:11.773 INFO 1 --- [pool-1-thread-1] o.a.kafka.common.utils.AppInfoParser : Kafka commitId : fa14705e51bd2ce5
-    2021-05-20 13:42:11.785 INFO 1 --- [pool-1-thread-1] org.apache.kafka.clients.Metadata : Cluster ID: kJGw05_iTNOfms7RJu0JSw
-    2021-05-20 13:42:14.049 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.AbstractCoordinator : [Consumer clientId=consumer-3, groupId=report] Attempt to heartbeat failed since group is rebalancing
-    2021-05-20 13:42:14.049 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator : [Consumer clientId=consumer-3, groupId=report] Revoking previously assigned partitions []
-    2021-05-20 13:42:14.049 INFO 1 --- [container-0-C-1] o.s.c.s.b.k.KafkaMessageChannelBinder$1 : partitions revoked: []
-    2021-05-20 13:42:14.049 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.AbstractCoordinator : [Consumer clientId=consumer-3, groupId=report] (Re-)joining group
-    2021-05-20 13:42:14.056 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.AbstractCoordinator : [Consumer clientId=consumer-3, groupId=report] Successfully joined group with generation 3
-    2021-05-20 13:42:14.057 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator : [Consumer clientId=consumer-3, groupId=report] Setting newly assigned partitions [coffee-0]
-    2021-05-20 13:42:14.064 INFO 1 --- [container-0-C-1] o.s.c.s.b.k.KafkaMessageChannelBinder$1 : partitions assigned: [coffee-0]
+2021-06-03 05:28:24.510 INFO 1 --- [pool-1-thread-1] o.a.kafka.common.utils.AppInfoParser : Kafka version : 2.0.1
+2021-06-03 05:28:24.510 INFO 1 --- [pool-1-thread-1] o.a.kafka.common.utils.AppInfoParser : Kafka commitId : fa14705e51bd2ce5
+2021-06-03 05:28:24.519 INFO 1 --- [pool-1-thread-1] org.apache.kafka.clients.Metadata : Cluster ID: _gCXCLQSQ0mXXI993jUh0Q
+2021-06-03 05:28:26.780 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.AbstractCoordinator : [Consumer clientId=consumer-3, groupId=taxi] Attempt to heartbeat failed since group is rebalancing
+2021-06-03 05:28:26.780 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator : [Consumer clientId=consumer-3, groupId=taxi] Revoking previously assigned partitions []
+2021-06-03 05:28:26.780 INFO 1 --- [container-0-C-1] o.s.c.s.b.k.KafkaMessageChannelBinder$1 : partitions revoked: []
+2021-06-03 05:28:26.781 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.AbstractCoordinator : [Consumer clientId=consumer-3, groupId=taxi] (Re-)joining group
+2021-06-03 05:28:26.789 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.AbstractCoordinator : [Consumer clientId=consumer-3, groupId=taxi] Successfully joined group with generation 10
+2021-06-03 05:28:26.790 INFO 1 --- [container-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator : [Consumer clientId=consumer-3, groupId=taxi] Setting newly assigned partitions [taxi-0]
+2021-06-03 05:28:26.801 INFO 1 --- [container-0-C-1] o.s.c.s.b.k.KafkaMessageChannelBinder$1 : partitions assigned: [taxi-0]
+2021-06-03 05:29:11.375 INFO 1 --- [nio-8080-exec-1] o.h.h.i.QueryTranslatorFactoryInitiator : HHH000397: Using ASTQueryTranslatorFactory
 ```
 
 ## Zero-downtime deploy
 k8s의 무중단 서비스 배포 기능을 점검한다.
 ```
-    ➜  ~ kubectl describe deploy order -n coffee
-    Name:                   order
-    Namespace:              coffee
-    CreationTimestamp:      Thu, 20 May 2021 12:59:14 +0900
-    Labels:                 app=order
-    Annotations:            deployment.kubernetes.io/revision: 8
-    Selector:               app=order
-    Replicas:               4 desired | 4 updated | 4 total | 4 available | 0 unavailable
-    StrategyType:           RollingUpdate
-    MinReadySeconds:        0
-    RollingUpdateStrategy:  50% max unavailable, 50% max surge
-    Pod Template:
-        Labels:       app=order
-        Annotations:  kubectl.kubernetes.io/restartedAt: 2021-05-20T12:06:29Z
-        Containers:
-            order:
-                Image:        740569282574.dkr.ecr.ap-northeast-2.amazonaws.com/order:v1
-                Port:         8080/TCP
-                Host Port:    0/TCP
-                Liveness:     http-get http://:8080/actuator/health delay=120s timeout=2s period=5s #success=1 #failure=5
-                Readiness:    http-get http://:8080/actuator/health delay=10s timeout=2s period=5s #success=1 #failure=10
+    ➜  ~ kubectl describe deploy taxi -n taxi
+Name:                   taxi
+Namespace:              taxi
+CreationTimestamp:      Thu, 03 Jun 2021 15:25:24 +0900
+Labels:                 app=taxi
+Annotations:            deployment.kubernetes.io/revision: 3
+Selector:               app=taxi
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=taxi
+  Containers:
+   taxi:
+    Image:      879772956301.dkr.ecr.ap-southeast-1.amazonaws.com/user09-taxi:v7
+    Port:       8080/TCP
+    Host Port:  0/TCP
+    Liveness:   http-get http://:8080/actuator/health delay=120s timeout=2s period=5s #success=1 #failure=5
+    Readiness:  http-get http://:8080/actuator/health delay=10s timeout=2s period=5s #success=1 #failure=10
+    Environment Variables from:
+      taxi        ConfigMap  Optional: false
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   taxi-567688979f (1/1 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  32m   deployment-controller  Scaled up replica set taxi-567688979f to 1
+  Normal  ScalingReplicaSet  31m   deployment-controller  Scaled down replica set taxi-7c54b9966d to 0
 ```
-기능 점검을 위해 order Deployment의 replicas를 4로 수정했다. 
-그리고 위 Readiness와 RollingUpdateStrategy 설정이 정상 적용되는지 확인한다.
+
+위 Readiness와 RollingUpdateStrategy 설정이 정상 적용되는지 확인한다.
 ```
     ➜  ~ kubectl rollout status deploy/order -n coffee
 
