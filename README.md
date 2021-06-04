@@ -626,52 +626,19 @@ replicas을 4로 설정 후,
     taxi-694b9897cf-qrztv        1/1     Running   0          2m21s
 ```
 배포시 pod는 위의 흐름과 같이 생성 및 종료되어 서비스의 무중단을 보장했다.
+배포 중 부하테스트 결과도 100% 확인
+```
+Transactions:                   5649 hits
+Availability:                 100.00 %
+Elapsed time:                  59.00 secs
+Data transferred:               0.61 MB
+Response time:                  0.16 secs
+Transaction rate:              95.75 trans/sec
+Throughput:                     0.01 MB/sec
+Concurrency:                   14.97
+Successful transactions:           0
+Failed transactions:               0
+Longest transaction:            0.43
+Shortest transaction:           0.00
+```
 
-
-## 셀프힐링 (livenessProbe 설정)
-- order deployment livenessProbe 
-```
-          livenessProbe:
-            httpGet:
-              path: /actuator/health
-              port: 8080
-              scheme: HTTP
-            initialDelaySeconds: 120
-            timeoutSeconds: 2
-            periodSeconds: 5
-            successThreshold: 1
-            failureThreshold: 5
-```
-livenessProbe 기능 점검을 위해 HPA 제거한다.
-```
-➜  ~ kubectl get hpa -n coffee
-No resources found in coffee namespace.
-```
-Pod 의 변화를 살펴보기 위하여 watch
-```
-➜  ~ kubectl get -n coffee po -w
-NAME                        READY   STATUS    RESTARTS   AGE
-customer-785f544f95-mh456   1/1     Running   0          23h
-delivery-557f4d7f49-z47bx   1/1     Running   0          23h
-gateway-6886bbf85b-4hggj    1/1     Running   0          149m
-gateway-6886bbf85b-mg9fz    1/1     Running   0          22h
-order-659cd7bddf-glgjj      1/1     Running   0          22m
-product-7c5c949965-z6pqs    1/1     Running   0          131m
-report-85dd84c856-qbzbc     1/1     Running   0          16h
-```
-order 서비스를 다운시키기 위한 부하 발생
-```
-➜  ~ siege -c50 -t60S -r10 --content-type "application/json" 'http://ac4ff02e7969e44afbe64ede4b2441ac-1979746227.ap-northeast-2.elb.amazonaws.com:8080/orders POST {"customerId":2, "productId":1}'
-```
-order Pod의 liveness 조건 미충족에 의한 RESTARTS 횟수 증가 확인
-```
-➜  ~ kubectl get -n coffee po -w
-NAME                        READY   STATUS    RESTARTS   AGE
-customer-785f544f95-mh456   1/1     Running   0          23h
-delivery-557f4d7f49-z47bx   1/1     Running   0          23h
-gateway-6886bbf85b-4hggj    1/1     Running   0          157m
-gateway-6886bbf85b-mg9fz    1/1     Running   0          22h
-order-659cd7bddf-glgjj      1/1     Running   1          30m
-product-7c5c949965-z6pqs    1/1     Running   0          138m
-report-85dd84c856-qbzbc     1/1     Running   0          16h
-```
