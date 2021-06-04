@@ -1,7 +1,6 @@
 server:
   port: 8080
 ---
-
 spring:
   profiles: default
   jpa:
@@ -38,7 +37,6 @@ logging:
 server:
   port: 8082
 ---
-
 spring:
   profiles: docker
   cloud:

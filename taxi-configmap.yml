@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: default
-  namespace: default
+  name: taxi
+  namespace: taxi
 data:
   taxiKafka: my-kafka.kafka.svc.cluster.local:9092

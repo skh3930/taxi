@@ -5,7 +5,7 @@ metadata:
   labels:
     app: taxi
 spec:
-  replicas: 1
+  replicas: 4
   selector:
     matchLabels:
       app: taxi
@@ -16,9 +16,16 @@ spec:
     spec:
       containers:
         - name: taxi
-          image: 879772956301.dkr.ecr.ap-southeast-1.amazonaws.com/user09-taxi:v5
+          image: 879772956301.dkr.ecr.ap-southeast-1.amazonaws.com/user09-taxi:circit
           ports:
             - containerPort: 8080
+          resources:
+            limits:
+              cpu: 400m
+              memory: 1000Mi
+            requests:
+              cpu: 100m
+              memory: 1000Mi
           envFrom:
             - configMapRef:
                 name: taxi
@@ -38,3 +45,4 @@ spec:
             timeoutSeconds: 2
             periodSeconds: 5
             failureThreshold: 5
+          

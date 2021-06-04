@@ -18,6 +18,7 @@ public class Passenger {
 
     @PostPersist
     public void onPostPersist() {
+
         CalledTaxi calledtaxi = new CalledTaxi();
         BeanUtils.copyProperties(this, calledtaxi);
         calledtaxi.publishAfterCommit();

@@ -1,7 +1,6 @@
 server:
   port: 8080
 ---
-
 spring:
   profiles: default
   jpa:
@@ -38,7 +37,6 @@ logging:
 server:
   port: 8083
 ---
-
 spring:
   profiles: docker
   cloud:
@@ -57,8 +55,8 @@ spring:
       bindings:
         event-in:
           group: call
-          destination: taxi
+          destination: taxis
           contentType: application/json
         event-out:
-          destination: taxi
+          destination: taxis
           contentType: application/json

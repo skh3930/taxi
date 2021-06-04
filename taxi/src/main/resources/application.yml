@@ -38,6 +38,15 @@ feign:
   client:
     url:
       callUrl: http://localhost:8083
+  hystrix:
+    enabled: true
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 610
 server:
   port: 8081
 ---
@@ -59,12 +68,21 @@ spring:
       bindings:
         event-in:
           group: taxi
-          destination: taxi
+          destination: taxis
           contentType: application/json
         event-out:
-          destination: taxi
+          destination: taxis
           contentType: application/json
 feign:
   client:
     url:
-      callUrl: http://a2bc7a5cfd2cc4790b7bf023ab3e4176-19461250.ap-southeast-1.elb.amazonaws.com:8080
+      callUrl: http://call:8080
+  hystrix:
+    enabled: true
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 610

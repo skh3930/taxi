@@ -7,11 +7,13 @@ import org.springframework.context.ApplicationContext;
 import taxi.config.KafkaProcessor;
 
 import org.springframework.cloud.stream.annotation.EnableBinding;
+import org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @SpringBootApplication
 @EnableBinding(KafkaProcessor.class)
 @EnableFeignClients
+@EnableCircuitBreaker
 public class TaxiApplication {
     public static ApplicationContext applicationContext;
 

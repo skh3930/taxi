@@ -24,15 +24,13 @@ public class CallController {
 
     @PutMapping("/{id}")
     public boolean updateCall(@PathVariable Long id, @RequestBody Map<String, Object> payload) throws Exception {
-        Call call = callRepository.findById(id).get();
-
-        if (call.getStatus().equals("call")) {
-            call.setStatus(payload.get("status").toString());
-            callRepository.save(call);
-
-            return true;
-        } else {
-            return false;
+        // Call call = callRepository.findById(id).get();
+        // 부하용
+        try {
+            Thread.currentThread().sleep((long) (400 + Math.random() * 220));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
+        return true;
     }
 }
