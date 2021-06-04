@@ -227,7 +227,7 @@ public interface CallService {
 
 
 ```
-# 콜 (call) 서비스를 잠시 내려놓음 (ctrl+c, replicas 0 으로 설정)
+# 콜 (call) 서비스를 잠시 내려놓음 (ctrl+c)
 
 # 콜 승락
 http POST http://localhost:8081/taxis/accept callId=6 startLocation=서울역 endLocation=강남역 status=accept # fail
