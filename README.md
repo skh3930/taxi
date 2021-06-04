@@ -161,8 +161,8 @@ public interface PassengerRepository extends PagingAndSortingRepository<Passenge
 
 }
 ```
+
 - 적용 후 REST API 의 테스트
-- 
 ```
 # 택시 요청 
 http POST http://localhost:8082/passengers startLocation=서울역 endLocation=강남역 status=call
