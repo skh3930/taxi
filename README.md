@@ -441,11 +441,11 @@ spec:
   targetCPUUtilizationPercentage: 5
 
 ➜  ~ kubectl get hpa -n taxi
-NAME        REFERENCE              TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
-call        Deployment/call        <unknown>/5%   1         5         1          19m
-gateway     Deployment/gateway     <unknown>/5%   1         5         1          21m
-passenger   Deployment/passenger   <unknown>/5%   1         5         1          18m
-taxi        Deployment/taxi        <unknown>/5%   1         5         1          19m
+NAME        REFERENCE              TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
+call        Deployment/call        5%/5%     1         5         5          14h
+gateway     Deployment/gateway     8%/5%     1         5         5          14h
+passenger   Deployment/passenger   121%/5%   1         5         5          14h
+taxi        Deployment/taxi        6%/5%     1         5         5          14h
 ```
 - 부하를 1분간 유지한다.
 ```
@@ -569,60 +569,45 @@ Events:
   Normal  ScalingReplicaSet  32m   deployment-controller  Scaled up replica set taxi-567688979f to 1
   Normal  ScalingReplicaSet  31m   deployment-controller  Scaled down replica set taxi-7c54b9966d to 0
 ```
-
+replicas을 4로 설정 후,
 위 Readiness와 RollingUpdateStrategy 설정이 정상 적용되는지 확인한다.
 ```
-    ➜  ~ kubectl rollout status deploy/order -n coffee
+    ➜  ~ kubectl apply -n taxi -f C:\DEV\Workspace\taxi\taxi\kubernetes\deployment.yml
 
-    ➜  ~ kubectl get po -n coffee
-    NAME                        READY   STATUS    RESTARTS   AGE
-    customer-785f544f95-mh456   1/1     Running   0          5h40m
-    delivery-557f4d7f49-z47bx   1/1     Running   0          5h40m
-    gateway-6886bbf85b-58ms8    1/1     Running   0          4h56m
-    gateway-6886bbf85b-mg9fz    1/1     Running   0          4h56m
-    order-7978b484d8-6qsjq      1/1     Running   0          62s
-    order-7978b484d8-h4hjs      1/1     Running   0          62s
-    order-7978b484d8-rw2zk      1/1     Running   0          62s
-    order-7978b484d8-x622v      1/1     Running   0          62s
-    product-7f67966577-n7kqk    1/1     Running   0          5h40m
-    report-5c6fd7b477-w9htj     1/1     Running   0          4h27m
+    ➜  ~  kubectl get po -n taxi
+    NAME                         READY   STATUS    RESTARTS   AGE
+    call-89dcf55dc-qcln6         1/1     Running   0          153m
+    gateway-fc944b68b-dnsfd      1/1     Running   0          152m
+    passenger-7c977c8f6d-rk8dz   1/1     Running   0          153m
+    taxi-6747ddf654-5nfbh        1/1     Running   0          131m
+    taxi-6747ddf654-dv5hn        1/1     Running   0          133m
+    taxi-6747ddf654-kc5d6        1/1     Running   0          133m
+    taxi-6747ddf654-rgtsp        1/1     Running   0          131m
+    taxi-6747ddf654-tcjfs        0/1     Running   0          61s
     
-    ➜  ~ kubectl get deploy -n coffee
-    NAME       READY   UP-TO-DATE   AVAILABLE   AGE
-    customer   1/1     1            1           8h
-    delivery   1/1     1            1           8h
-    gateway    2/2     2            2           6h1m
-    order      2/4     4            2           8h
-    product    1/1     1            1           8h
-    report     1/1     1            1           4h28m
+    ➜  ~ kubectl get po -n taxi
+    NAME                         READY   STATUS    RESTARTS   AGE
+    call-89dcf55dc-qcln6         1/1     Running   0          167m
+    gateway-fc944b68b-dnsfd      1/1     Running   0          166m
+    passenger-7c977c8f6d-rk8dz   1/1     Running   0          167m
+    taxi-6747ddf654-5nfbh        1/1     Running   0          145m
+    taxi-6747ddf654-dv5hn        1/1     Running   0          147m
+    taxi-6747ddf654-hs6x2        0/1     Running   0          19s
+    taxi-6747ddf654-rgtsp        1/1     Running   0          145m
+    taxi-694b9897cf-62s4f        0/1     Running   0          34s
+    taxi-694b9897cf-8nms7        0/1     Running   0          34s
+    taxi-694b9897cf-kx4cf        0/1     Running   0          19s
     
-    ➜  ~ kubectl get po -n coffee
-    NAME                        READY   STATUS    RESTARTS   AGE
-    customer-785f544f95-mh456   1/1     Running   0          5h41m
-    delivery-557f4d7f49-z47bx   1/1     Running   0          5h41m
-    gateway-6886bbf85b-58ms8    1/1     Running   0          4h57m
-    gateway-6886bbf85b-mg9fz    1/1     Running   0          4h57m
-    order-7978b484d8-6qsjq      1/1     Running   0          115s
-    order-7978b484d8-rw2zk      1/1     Running   0          115s
-    order-84c9d7c848-mmw4b      0/1     Running   0          18s
-    order-84c9d7c848-r64lc      0/1     Running   0          18s
-    order-84c9d7c848-tbl8l      0/1     Running   0          18s
-    order-84c9d7c848-tslfc      0/1     Running   0          18s
-    product-7f67966577-n7kqk    1/1     Running   0          5h41m
-    report-5c6fd7b477-w9htj     1/1     Running   0          4h28m
-    
-    ➜  ~ kubectl get po -n coffee
-    NAME                        READY   STATUS    RESTARTS   AGE
-    customer-785f544f95-mh456   1/1     Running   0          5h42m
-    delivery-557f4d7f49-z47bx   1/1     Running   0          5h42m
-    gateway-6886bbf85b-58ms8    1/1     Running   0          4h58m
-    gateway-6886bbf85b-mg9fz    1/1     Running   0          4h58m
-    order-84c9d7c848-mmw4b      1/1     Running   0          65s
-    order-84c9d7c848-r64lc      1/1     Running   0          65s
-    order-84c9d7c848-tbl8l      1/1     Running   0          65s
-    order-84c9d7c848-tslfc      1/1     Running   0          65s
-    product-7f67966577-n7kqk    1/1     Running   0          5h42m
-    report-5c6fd7b477-w9htj     1/1     Running   0          4h29m
+    ➜  ~ kubectl get po -n taxi
+    NAME                         READY   STATUS    RESTARTS   AGE
+    call-89dcf55dc-qcln6         1/1     Running   0          171m
+    gateway-fc944b68b-dnsfd      1/1     Running   0          169m
+    passenger-7c977c8f6d-rk8dz   1/1     Running   0          170m
+    taxi-694b9897cf-62s4f        1/1     Running   0          4m8s
+    taxi-694b9897cf-6v8nw        1/1     Running   0          2m26s
+    taxi-694b9897cf-8nms7        1/1     Running   0          4m8s
+    taxi-694b9897cf-kx4cf        1/1     Running   0          3m53s
+    taxi-694b9897cf-qrztv        1/1     Running   0          2m21s
 ```
 배포시 pod는 위의 흐름과 같이 생성 및 종료되어 서비스의 무중단을 보장했다.
 
