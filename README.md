@@ -512,7 +512,7 @@ EKS 설치된 kafka에 정상 접근된 것을 확인할 수 있다. (해당 con
 ```
 
 ## Zero-downtime deploy
-k8s의 무중단 서비스 배포 기능을 점검한다.
+k8s의 무중단 서비스 배포 기능을 점검한다. (readinessProbe,  livenessProbe 모두 적용 상태)
 ```
     ➜  ~ kubectl describe deploy taxi -n taxi
 Name:                   taxi
