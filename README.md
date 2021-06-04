@@ -7,32 +7,6 @@
 - 체크포인트 : https://workflowy.com/s/assessment/qJn45fBdVZn4atl3
 
 
-# Table of contents
-
-- [예제 - Taxi](#---)
-  - [서비스 시나리오](#서비스-시나리오)
-  - [분석/설계](#분석설계)
-    - [Event Storming 결과](#Event-Storming-결과)
-    - [완성된 1차 모형](#완성된-1차-모형)
-    - [바운디드 컨텍스트](#바운디드-컨텍스트)
-    - [기능적 요구사항 검증](#기능적-요구사항을-커버하는지-검증)
-    - [비기능적 요구사항 검증](#비기능-요구사항에-대한-검증)
-    - [헥사고날 아키텍처 다이어그램 도출](#헥사고날-아키텍처-다이어그램-도출)
-       
-  - [구현:](#구현)
-    - [DDD 의 적용](#ddd-의-적용)   
-    - [동기식 호출 과 Fallback 처리](#동기식-호출-과-Fallback-처리)
-    - [비동기식 호출 과 Eventual Consistency](#동기식-호출-과-Fallback-처리)
-    
-  - [운영](#운영)
-    - [CI/CD 설정](#CICD-설정)
-    - [Kubernetes 설정](#Kubernetes-설정)
-    - [동기식 호출 / 서킷 브레이킹 / 장애격리](#동기식-호출/서킷-브레이킹/장애격리)
-    - [오토스케일 아웃](#Autoscale-HPA)
-    - [무정지 재배포](#Zero-downtime-deploy)
- 
- 
-
 # 서비스 시나리오
 
 [ 기능적 요구사항 ]
@@ -51,9 +25,6 @@
     1. 배차가 가능한 콜만 수락할 수 있다. Sync 호출 
 1. 장애격리
     1. call 서비스가 중단되더라도 고객은 365일 24시간 call을 부를 수 있어야 한다  Async (event-driven), Eventual Consistency
-    2. 콜이 과도하게 들어와서 call 서비스가 과중되더라도 콜 정보를 call 서비스가 정상화 된 이후에 수신한다 Circuit breaker, fallback
-1. 성능
-    1. 주문 접수 상태가 바뀔때마다 고객에게 알림을 줄 수 있어야 한다  Event driven
 
 
 # 분석/설계
@@ -100,9 +71,6 @@
       1. 배차가 가능한 콜만 수락할 수 있다. Sync 호출 
     2. 장애격리 (OK)
       1. call 서비스가 중단되더라도 고객은 365일 24시간 call을 부를 수 있어야 한다  Async (event-driven), Eventual Consistency
-      2. 콜이 과도하게 들어와서 call 서비스가 과중되더라도 콜 정보를 call 서비스가 정상화 된 이후에 수신한다 Circuit breaker, fallback
-    3.성능 (OK)
-     1. 주문 접수 상태가 바뀔때마다 고객에게 알림을 줄 수 있어야 한다  Event driven
 
 
 ## 헥사고날 아키텍처 다이어그램 도출
