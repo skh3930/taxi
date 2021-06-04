@@ -65,7 +65,7 @@
 
 ### 비기능 요구사항에 대한 검증
 
-![image](https://user-images.githubusercontent.com/24731820/120583503-52852600-c469-11eb-892b-465c2d59fac2.png)
+![image](https://user-images.githubusercontent.com/24731820/120743746-9002b580-c534-11eb-897e-043366e38ae6.png)
 
     1. 트랜잭션 (OK)
       1. 배차가 가능한 콜만 수락할 수 있다. Sync 호출 
