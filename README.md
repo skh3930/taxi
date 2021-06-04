@@ -207,6 +207,22 @@ http POST http://localhost:8081/taxis/accept callId=6 startLocation=서울역 en
 http GET http://localhost:8082/passengers
 ```
 
+## 폴리글랏 퍼시스턴스
+
+택시(taxi) 는 h2 db가 아닌 apache derby를 사용하기로 하였다. h2와 유사한 embedded db이기 때문에 pom.xml에 dependency만 추가/삭제하여 derby 를 부착시켰다
+
+```
+# pom.xml
+(h2 dependency 제거 후, derby dependency 추가)
+	<!-- apache derby -->
+		<dependency>
+			<groupId>org.apache.derby</groupId>
+			<artifactId>derby</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
+```
+
 ## 동기식 호출 과 Fallback 처리
 
 분석단계에서의 조건 중 하나로 택시(taxi)->콜(call) 간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출하도록 한다. 
