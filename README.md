@@ -214,12 +214,12 @@ http GET http://localhost:8082/passengers
 ```
 # pom.xml
 (h2 dependency 제거 후, derby dependency 추가)
-	<!-- apache derby -->
-		<dependency>
-			<groupId>org.apache.derby</groupId>
-			<artifactId>derby</artifactId>
-			<scope>runtime</scope>
-		</dependency>
+<!-- apache derby -->
+<dependency>
+	<groupId>org.apache.derby</groupId>
+	<artifactId>derby</artifactId>
+	<scope>runtime</scope>
+</dependency>
 
 ```
 
